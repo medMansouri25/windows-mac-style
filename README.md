@@ -3,6 +3,8 @@
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
 [![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows/windows-11)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/powershell/)
+[![Rainmeter](https://img.shields.io/badge/Rainmeter-4.5-19A2D9)](https://www.rainmeter.net/)
+[![Windhawk](https://img.shields.io/badge/Windhawk-modules-7B2FBE)](https://windhawk.net/)
 
 Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
