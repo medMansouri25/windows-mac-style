@@ -1,0 +1,7 @@
+# Fichiers generes a l'execution (ne pas versionner)
+*.log
+economie_etat.json
+economie_ecran.json
+fond_ecran.jpg
+Thumbs.db
+desktop.ini

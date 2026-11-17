@@ -1,0 +1,9 @@
+# Fichiers Windows : garder les fins de ligne CRLF (necessaire pour .bat / .vbs)
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.vbs  text eol=crlf
+*.ps1  text eol=crlf
+*.lua  text eol=crlf
+*.json text eol=crlf
+*.md   text eol=crlf
+*.txt  text eol=crlf

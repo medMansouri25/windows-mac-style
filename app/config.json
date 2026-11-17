@@ -1,0 +1,30 @@
+{
+  "barre": {
+    "hauteur": 30,
+    "nomMenuPrincipal": "Bureau"
+  },
+  "fondEcran": {
+    "url": "https://images.unsplash.com/photo-1543158266-0066955047b1?fm=jpg&q=92&w=3840&fit=max",
+    "credit": "Photo Unsplash (photo-1543158266-0066955047b1) - licence Unsplash"
+  },
+  "dock": {
+    "theme": "LiquidGlass2",
+    "hauteur": 68,
+    "tailleIcones": 26,
+    "grossissementLoupe": 150
+  },
+  "economie": {
+    "actif": true,
+    "frequenceBatterie": 60,
+    "luminositeMaxBatterie": 60,
+    "programmes": [
+      { "nom": "NVIDIA Overlay", "processus": ["NVIDIA Overlay"],                          "menuDemarrer": "",                  "relancer": false },
+      { "nom": "Steam",          "processus": ["steam", "steamwebhelper"],                 "menuDemarrer": "Steam",             "relancer": true  },
+      { "nom": "Widgets",        "processus": ["WidgetBoard", "MicrosoftStartFeedProvider"], "menuDemarrer": "",                "relancer": false },
+      { "nom": "Spotify",        "processus": ["Spotify", "SpotifyLauncher"],              "menuDemarrer": "Spotify",           "relancer": true  },
+      { "nom": "WhatsApp",       "processus": ["WhatsApp.Root", "WhatsApp"],               "menuDemarrer": "WhatsApp",          "relancer": true  },
+      { "nom": "Discord",        "processus": ["Discord"],                                 "menuDemarrer": "Discord",           "relancer": true  },
+      { "nom": "OMEN Light Studio", "processus": ["LightStudio-background"],               "menuDemarrer": "OMEN Light Studio", "relancer": true  }
+    ]
+  }
+}

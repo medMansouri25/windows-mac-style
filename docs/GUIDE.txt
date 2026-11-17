@@ -1,0 +1,47 @@
+﻿INTERFACE « STYLE MAC » — GUIDE D'UTILISATION
+==============================================
+
+EN HAUT — la barre des menus
+  · Logo Windows (à gauche)  = toutes les applications (comme le Launchpad)
+  · Bureau / Fichiers / Applications / Réglages / Aide
+  · À droite : batterie, Wi-Fi, recherche, centre de contrôle (son, luminosité,
+    Bluetooth…), puis date et heure (clic = notifications et calendrier)
+  · Batterie : blanche = sur batterie ; blanche avec éclair = branché (recharge
+    en pause) ; VERTE avec éclair = en charge ; JAUNE = économie d'énergie ;
+    ROUGE = moins de 20 %
+  · Les fenêtres agrandies s'arrêtent sous cette barre, comme sur Mac.
+
+EN BAS — le dock
+  · Icônes centrées dans une bande de verre, qui grossissent au passage de la souris.
+  · Petit point sous les applications ouvertes.
+  · À droite, une petite pastille garde les icônes cachées (Discord, Steam…).
+
+VOLUME ET LUMINOSITÉ
+  · Quand vous les changez, une petite pastille façon Apple apparaît au centre,
+    sous la barre, puis disparaît.
+
+MODE ÉCONOMIE (PC portable)
+  · Débranché depuis 15 secondes (ou en économie d'énergie) :
+      - l'écran passe à 60 Hz et la luminosité est plafonnée à 60 %,
+      - les programmes inutiles en arrière-plan sont fermés
+        (NVIDIA Overlay, Steam, Widgets, Spotify, WhatsApp, Discord…).
+  · Rebranché : tout revient, et les programmes sont relancés (fenêtres réduites).
+  · Liste modifiable dans %LOCALAPPDATA%\InterfaceMac\config.json
+
+RACCOURCIS CLAVIER
+  Touche Windows ⊞    → toutes les applications et recherche (comme Spotlight)
+  ⊞ + D               → voir le bureau
+  ⊞ + E               → fichiers (comme le Finder)
+  ⊞ + A               → centre de contrôle
+  ⊞ + N               → notifications et calendrier
+  Alt + Tab           → passer d'une fenêtre à l'autre
+  ⊞ + Tab             → toutes les fenêtres (comme Mission Control)
+
+TOUT ENLEVER
+  · Double-cliquez sur DESINSTALLER.bat (dans le dossier téléchargé).
+  · Ou lancez en administrateur : %LOCALAPPDATA%\InterfaceMac\desinstaller.ps1
+
+JOURNAUX (en cas de souci)
+  %LOCALAPPDATA%\InterfaceMac\demarrage.log   (démarrage)
+  %LOCALAPPDATA%\InterfaceMac\economie.log    (mode économie)
+  %TEMP%\InterfaceMac_installation.log        (installation)
