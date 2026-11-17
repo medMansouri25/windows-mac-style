@@ -1,6 +1,8 @@
 # 🍏 Interface « style Mac » pour Windows 11
 
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
+[![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows/windows-11)
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1-5391FE?logo=powershell&logoColor=white)](https://learn.microsoft.com/powershell/)
 
 Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
