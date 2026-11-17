@@ -1,5 +1,7 @@
 # 🍏 Interface « style Mac » pour Windows 11
 
+[![Licence : MIT](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
+
 Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
 - **Barre des menus en haut** : logo, menus, batterie, Wi-Fi, recherche, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
