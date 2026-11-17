@@ -114,3 +114,7 @@ Windhawk modifie l'Explorateur Windows pendant qu'il tourne. Les versions des mo
 - [Rainmeter](https://github.com/rainmeter/rainmeter) (GPL-2.0), [Windhawk](https://github.com/ramensoftware/windhawk) et ses modules (m417z, Ph0en1x-dev, mario0318…).
 - Fond d'écran : photo [Unsplash](https://unsplash.com) (licence Unsplash), téléchargée pendant l'installation.
 - Interface inspirée de macOS. Ce projet n'est pas affilié à Apple.
+
+## 📄 Licence
+
+Ce projet est sous licence **MIT** : voir le fichier [LICENSE](LICENSE). Rainmeter, Windhawk et ses modules gardent leurs propres licences.
