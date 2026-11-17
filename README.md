@@ -14,6 +14,16 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
 ---
 
+## 📸 Aperçu
+
+![Vue d'ensemble : barre des menus en haut, dock en verre en bas](docs/captures/apercu.jpg)
+
+| Pastille de volume | Pastille de luminosité |
+|---|---|
+| ![Pastille de volume façon Apple](docs/captures/volume.jpg) | ![Pastille de luminosité façon Apple](docs/captures/luminosite.jpg) |
+
+---
+
 ## ✅ Prérequis
 
 | | |
