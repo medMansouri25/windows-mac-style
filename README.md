@@ -6,7 +6,7 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 - **Dock en verre en bas** : icônes centrées, **effet loupe** au survol, petits points sous les applications ouvertes.
 - **Pastilles de volume et de luminosité** façon Apple : barre blanche et pourcentage, sous la barre des menus.
 - **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, jaune en économie d'énergie, rouge sous 20 %.
-- **Mode économie automatique** (PC portables) : sur batterie, l'écran passe à 60 Hz, la luminosité est plafonnée et les programmes inutiles en arrière-plan sont fermés. Tout revient au rebranchement.
+- 🔋 **Mode économie automatique sur batterie** (PC portables) : dès que vous débranchez, l'écran passe à 60 Hz, la luminosité est plafonnée et les programmes inutiles en arrière-plan sont fermés. **Plus d'autonomie, sans rien faire.** Tout revient au rebranchement. [Détails ↓](#-mode-économie-sur-batterie)
 - **Fond d'écran** Manhattan de nuit, en 4K.
 - Démarrage **invisible et rapide**, avec relance automatique si quelque chose plante.
 
@@ -21,6 +21,24 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 | Pastille de volume | Pastille de luminosité |
 |---|---|
 | ![Pastille de volume façon Apple](docs/captures/volume.jpg) | ![Pastille de luminosité façon Apple](docs/captures/luminosite.jpg) |
+
+## 🔋 Mode économie sur batterie
+
+> **Le point fort pour les PC portables : gagnez de l'autonomie automatiquement, sans y penser.**
+
+Débranchez le chargeur (ou activez l'économiseur de batterie de Windows) : après **15 secondes**, l'interface passe d'elle-même en mode économie.
+
+| | Branché | Sur batterie |
+|---|---|---|
+| Fréquence de l'écran | maximale (ex. 240 Hz) | **60 Hz** |
+| Luminosité | libre | **plafonnée à 60 %** |
+| Programmes en arrière-plan | ouverts | **fermés** : NVIDIA Overlay, Steam, Widgets, Spotify, WhatsApp, Discord, OMEN Light Studio… |
+| Icône de batterie | blanche avec éclair, ou verte en charge | blanche, jaune en économie d'énergie, rouge sous 20 % |
+
+- **Au rebranchement**, tout revient : fréquence maximale, luminosité libre, et les programmes fermés sont relancés, fenêtres réduites (sauf ceux marqués `"relancer": false`, comme NVIDIA Overlay et Widgets).
+- Le délai de 15 secondes évite de tout basculer si le câble se débranche une seconde.
+- Les programmes absents du PC sont simplement ignorés.
+- Tout se règle dans `config.json` (voir [Personnalisation](#️-personnalisation)) : fréquence, luminosité, liste des programmes, ou `"actif": false` pour couper le mode.
 
 ---
 
