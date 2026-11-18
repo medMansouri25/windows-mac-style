@@ -9,6 +9,8 @@ EN HAUT — la barre des menus
   · Batterie : blanche = sur batterie ; blanche avec éclair = branché (recharge
     en pause) ; VERTE avec éclair = en charge ; JAUNE = mode économie actif ;
     ROUGE = moins de 20 %
+  · Wi-Fi : plus il y a d'arcs blancs, meilleur est le signal (les autres restent
+    gris) ; icône barrée = pas de connexion ou pas d'Internet. Survol = nom du réseau.
   · Les fenêtres agrandies s'arrêtent sous cette barre, comme sur Mac.
 
 EN BAS — le dock

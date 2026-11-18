@@ -90,6 +90,8 @@ Txt=255,255,255,255
 Survol=255,255,255,45
 Rien=0,0,0,1
 Economie=0
+WifiNiv=4
+WifiInfo=Wi-Fi
 EnCharge=0
 EclairFond=0,0,0,0
 EclairBord=0,0,0,0
@@ -220,13 +222,100 @@ Text=[\xE721]
 LeftMouseUpAction=[#Start#]
 ToolTipText=Rechercher
 
+[MesureWifi]
+; niveau envoye par barre_reservee.ps1 (0 = pas de connexion, 1 a 4 = arcs allumes)
+Measure=Calc
+Formula=#WifiNiv#
+DynamicVariables=1
+IfCondition=MesureWifi = 0
+IfTrueAction=[!HideMeterGroup WifiNiv][!ShowMeter WifiCoupe][!Redraw]
+IfCondition2=MesureWifi = 1
+IfTrueAction2=[!HideMeterGroup WifiNiv][!ShowMeter Wifi][!ShowMeter Wifi1][!Redraw]
+IfCondition3=MesureWifi = 2
+IfTrueAction3=[!HideMeterGroup WifiNiv][!ShowMeter Wifi][!ShowMeter Wifi2][!Redraw]
+IfCondition4=MesureWifi = 3
+IfTrueAction4=[!HideMeterGroup WifiNiv][!ShowMeter Wifi][!ShowMeter Wifi3][!Redraw]
+IfCondition5=MesureWifi = 4
+IfTrueAction5=[!HideMeterGroup WifiNiv][!ShowMeter Wifi][!ShowMeter Wifi4][!Redraw]
+
 [Wifi]
 Meter=String
+Group=WifiNiv
 MeterStyle=StyleIcone
 X=(#SCREENAREAWIDTH#-$(n 224))
+FontColor=255,255,255,85
 Text=[\xE701]
 LeftMouseUpAction=["ms-availablenetworks:"]
-ToolTipText=Wi-Fi
+ToolTipText=#WifiInfo#
+DynamicVariables=1
+
+[Wifi1]
+Meter=String
+Group=WifiNiv
+FontFace=#Icones#
+FontSize=$(n 10.5)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=CenterCenter
+X=(#SCREENAREAWIDTH#-$(n 224))
+Y=$(n 16)
+Padding=$(n 6),$(n 4),$(n 6),$(n 4)
+Text=[\xE872]
+Hidden=1
+
+[Wifi2]
+Meter=String
+Group=WifiNiv
+FontFace=#Icones#
+FontSize=$(n 10.5)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=CenterCenter
+X=(#SCREENAREAWIDTH#-$(n 224))
+Y=$(n 16)
+Padding=$(n 6),$(n 4),$(n 6),$(n 4)
+Text=[\xE873]
+Hidden=1
+
+[Wifi3]
+Meter=String
+Group=WifiNiv
+FontFace=#Icones#
+FontSize=$(n 10.5)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=CenterCenter
+X=(#SCREENAREAWIDTH#-$(n 224))
+Y=$(n 16)
+Padding=$(n 6),$(n 4),$(n 6),$(n 4)
+Text=[\xE874]
+Hidden=1
+
+[Wifi4]
+Meter=String
+Group=WifiNiv
+FontFace=#Icones#
+FontSize=$(n 10.5)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=CenterCenter
+X=(#SCREENAREAWIDTH#-$(n 224))
+Y=$(n 16)
+Padding=$(n 6),$(n 4),$(n 6),$(n 4)
+Text=[\xE701]
+Hidden=1
+
+[WifiCoupe]
+Meter=String
+Group=WifiNiv
+MeterStyle=StyleIcone
+X=(#SCREENAREAWIDTH#-$(n 224))
+FontColor=255,255,255,170
+Text=[\xEB5E]
+LeftMouseUpAction=["ms-availablenetworks:"]
+ToolTipText=#WifiInfo#
+DynamicVariables=1
+Hidden=1
 $batterie
 "@
 Ecrire (Join-Path $Skins 'BarreMenus\BarreMenus.ini') $barre
@@ -306,11 +395,17 @@ Text=%1 %
 }
 $montrer = "[!UpdateMeasure MesureAffiche][!UpdateMeter *][!Redraw][!Move `"$px`" `"$py`"][!ZPos `"2`"][!Show][!CommandMeasure Minuteur `"Stop 1`"][!CommandMeasure Minuteur `"Execute 1`"]"
 $mesVolume = @"
+Vol=-2
 
 [MesureVolume]
-Measure=Plugin
-Plugin=Win7AudioPlugin
-OnChangeAction=$montrer
+; valeur envoyee par barre_reservee.ps1 quand Windows signale un changement (-1 = muet)
+Measure=Calc
+Formula=#Vol#
+DynamicVariables=1
+UpdateDivider=-1
+IfCondition=MesureVolume >= -1
+IfTrueAction=$montrer
+IfConditionMode=1
 
 [MesureAffiche]
 Measure=Calc
@@ -342,7 +437,7 @@ Measure=Calc
 Formula=Clamp(MesureLum, 0, 100)
 UpdateDivider=-1
 "@
-Ecrire (Join-Path $Skins 'Volume\Volume.ini') ((Pastille 'Volume' 'E995' $mesVolume).Replace('__UPDATE__','250'))
+Ecrire (Join-Path $Skins 'Volume\Volume.ini') ((Pastille 'Volume' 'E995' $mesVolume).Replace('__UPDATE__','1000'))
 Ecrire (Join-Path $Skins 'Luminosite\Luminosite.ini') ((Pastille 'Luminosite' 'E706' $mesLum).Replace('__UPDATE__','1000'))
 
 [pscustomobject]@{ Echelle = $S; LargeurPx = $largeur; Batterie = $aBatterie; PastilleX = $px; PastilleY = $py; BarrePx = $hp }

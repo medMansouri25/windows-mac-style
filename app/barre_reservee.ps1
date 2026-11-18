@@ -23,7 +23,31 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
+// --- Volume : interfaces Windows (Core Audio) pour etre prevenu des changements ---
+[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMMDeviceEnumerator { [PreserveSig] int EnumAudioEndpoints(int f, int s, out IntPtr d); [PreserveSig] int GetDefaultAudioEndpoint(int flux, int role, out IMMDevice dev); }
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMMDevice { [PreserveSig] int Activate(ref Guid iid, int ctx, IntPtr p, [MarshalAs(UnmanagedType.IUnknown)] out object o); [PreserveSig] int OpenPropertyStore(int a, out IntPtr p); [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); }
+[ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IAudioEndpointVolume { [PreserveSig] int RegisterControlChangeNotify(IAudioEndpointVolumeCallback cb); [PreserveSig] int UnregisterControlChangeNotify(IAudioEndpointVolumeCallback cb); }
+[Guid("657804FA-D6AD-4496-8A60-352752AF4F89"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IAudioEndpointVolumeCallback { [PreserveSig] int OnNotify(IntPtr data); }
+public class EcouteVolume : IAudioEndpointVolumeCallback {
+  public Action<int> Change; int dernier = -99;
+  public int OnNotify(IntPtr d) {
+    try {
+      bool muet = Marshal.ReadInt32(d, 16) != 0;
+      float v = BitConverter.ToSingle(BitConverter.GetBytes(Marshal.ReadInt32(d, 20)), 0);
+      int n = muet ? -1 : (int)Math.Round(v * 100);
+      if (n != dernier) { dernier = n; if (Change != null) Change(n); }
+    } catch { }
+    return 0;
+  }
+}
+
 public class BarreReservee : Form {
+  public static Func<string> LireWifi;   // fourni par PowerShell (API reseau de Windows)
+  string dernierWifi = "";
   [StructLayout(LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
   [StructLayout(LayoutKind.Sequential)] struct APPBARDATA { public int cbSize; public IntPtr hWnd; public uint uCallbackMessage; public uint uEdge; public RECT rc; public IntPtr lParam; }
   [DllImport("shell32.dll")] static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA d);
@@ -38,7 +62,7 @@ public class BarreReservee : Form {
   const string Rainmeter = @"__RAINMETER__";
   const string Dossier = @"__DOSSIER__\";
 
-  System.Windows.Forms.Timer minuteur; int dernierEco = -1; int dernierCharge = -1; int tours = 0;
+  System.Windows.Forms.Timer minuteur; int dernierEco = -1; int dernierCharge = -1; int tours = 0; int renvoi = 0;
   int modeApplique = -1; int modeCandidat = -1; int stable = 0;
 
   // --- Rainmeter : relance automatique, en pleine resolution ---
@@ -50,7 +74,7 @@ public class BarreReservee : Form {
         psi.UseShellExecute = false;
         psi.EnvironmentVariables["__COMPAT_LAYER"] = "~ HIGHDPIAWARE";
         System.Diagnostics.Process.Start(psi);
-        dernierEco = -1; dernierCharge = -1;
+        dernierEco = -1; dernierCharge = -1; renvoi = 4; // Rainmeter met ~2 s a charger la barre : renvoyer l'etat pendant 12 s
       }
     } catch { }
   }
@@ -69,9 +93,19 @@ public class BarreReservee : Form {
     if (modeApplique == 1) eco = 1;
     int charge = ((s.BatteryFlag & 8) != 0) ? 1 : 0;
     tours++;
-    if (eco != dernierEco || charge != dernierCharge || tours % 12 == 0) {
+    if (tours % 12 == 0) EcouterVolume();   // sortie audio changee (casque, ecran...) ?
+    bool renvoyer = renvoi > 0; if (renvoi > 0) renvoi--;
+    if (eco != dernierEco || charge != dernierCharge || renvoyer || tours % 12 == 0) {
       dernierEco = eco; dernierCharge = charge;
       Bang("[!SetVariable Economie " + eco + " \"MacWidgets\\BarreMenus\"][!SetVariable EnCharge " + charge + " \"MacWidgets\\BarreMenus\"]");
+    }
+    // Wi-Fi : niveau du signal (0 = pas de connexion, 1 a 4 = arcs allumes), lu toutes les 6 s
+    if (LireWifi != null && (tours % 2 == 0 || renvoyer)) {
+      string w = ""; try { w = LireWifi(); } catch { }
+      if (w.Contains("|") && (w != dernierWifi || renvoyer || tours % 12 == 0)) {
+        dernierWifi = w; string[] p = w.Split(new char[] { '|' }, 2);
+        try { System.Diagnostics.Process.Start(Rainmeter, "[!SetVariable WifiNiv " + p[0] + " \"MacWidgets\\BarreMenus\"][!SetVariable WifiInfo \"" + p[1] + "\" \"MacWidgets\\BarreMenus\"][!UpdateMeasure MesureWifi \"MacWidgets\\BarreMenus\"]"); } catch { }
+      }
     }
   }
 
@@ -84,6 +118,33 @@ public class BarreReservee : Form {
     try {
       System.Diagnostics.Process.Start("wscript.exe", "\"" + Dossier + "lancer_invisible.vbs\" \"" + Dossier + "economie.ps1\" " + (voulu == 1 ? "Activer" : "Desactiver"));
     } catch { }
+  }
+
+  // --- Volume : Windows previent a chaque changement (remplace la verification 4 fois par seconde) ---
+  [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")] static extern IntPtr TrouverFenetre(string c, string t);
+  [StructLayout(LayoutKind.Sequential)] struct COPYDATA { public IntPtr dwData; public int cbData; public IntPtr lpData; }
+  [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr h, int msg, IntPtr w, ref COPYDATA l, int flags, int delai, out IntPtr r);
+  IAudioEndpointVolume volPeriph; EcouteVolume volEcoute; string volId = "";
+  void EcouterVolume() {
+    try {
+      var en = (IMMDeviceEnumerator)Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")));
+      IMMDevice dev; if (en.GetDefaultAudioEndpoint(0, 0, out dev) != 0 || dev == null) return;
+      string id; dev.GetId(out id);
+      if (id == volId && volPeriph != null) return;          // meme sortie audio : deja a l'ecoute
+      if (volPeriph != null && volEcoute != null) { try { volPeriph.UnregisterControlChangeNotify(volEcoute); } catch { } }
+      Guid iid = typeof(IAudioEndpointVolume).GUID; object o;
+      if (dev.Activate(ref iid, 23, IntPtr.Zero, out o) != 0) return;
+      volPeriph = (IAudioEndpointVolume)o;
+      if (volEcoute == null) { volEcoute = new EcouteVolume(); volEcoute.Change = EnvoyerVolume; }
+      volPeriph.RegisterControlChangeNotify(volEcoute); volId = id;
+    } catch { }
+  }
+  // envoi direct a Rainmeter (WM_COPYDATA), sans lancer de processus a chaque cran de volume
+  void EnvoyerVolume(int n) {
+    IntPtr h = TrouverFenetre("DummyRainWClass", null); if (h == IntPtr.Zero) return;
+    string b = "[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]";
+    var cd = new COPYDATA(); cd.dwData = (IntPtr)1; cd.cbData = (b.Length + 1) * 2; cd.lpData = Marshal.StringToHGlobalUni(b);
+    try { IntPtr r; SendMessageTimeout(h, 0x4A, IntPtr.Zero, ref cd, 2, 1000, out r); } finally { Marshal.FreeHGlobal(cd.lpData); }
   }
 
   // --- Luminosite : Windows previent a chaque changement ---
@@ -114,6 +175,7 @@ public class BarreReservee : Form {
     cb = RegisterWindowMessage("BarreReserveeMac");
     minuteur = new System.Windows.Forms.Timer(); minuteur.Interval = 3000; minuteur.Tick += Verifier; minuteur.Start();
     EcouterLuminosite();
+    EcouterVolume();
   }
   protected override CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x80 | 0x08000000; return p; } }
   protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Inscrire(); }
@@ -152,4 +214,16 @@ public class BarreReservee : Form {
 '@
 $code = $code.Replace('__RAINMETER__', $rainmeterExe).Replace('__DOSSIER__', $dossier.TrimEnd('\'))
 Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing, System.Management -TypeDefinition $code
+# Wi-Fi : on lit le signal comme la barre des taches de Windows (sans demander la localisation)
+$null = [Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType = WindowsRuntime]
+[BarreReservee]::LireWifi = [Func[string]] {
+  $p = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()
+  if (-not $p) { return '0|Pas de connexion' }
+  $nom = $p.ProfileName -replace '["\[\]]', ''
+  if ([string]$p.GetNetworkConnectivityLevel() -ne 'InternetAccess') { return "0|$nom : pas d'acces a Internet" }
+  if (-not $p.IsWlanConnectionProfile) { return "4|$nom (cable)" }
+  $b = [int]$p.GetSignalBars()
+  $n = if ($b -ge 4) { 4 } elseif ($b -eq 3) { 3 } elseif ($b -eq 2) { 2 } else { 1 }
+  "$n|Wi-Fi : $nom (signal $b/5)"
+}
 [BarreReservee]::Lancer($Hauteur)

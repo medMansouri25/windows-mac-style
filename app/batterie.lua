@@ -24,6 +24,10 @@ function Update()
     couleur, info, texte = jaune, '#InfoEco#', jaune
   end
   if eco == 1 and secteur == 1 then texte = jaune end
+  -- rien n'a change depuis la derniere seconde : on ne redessine pas (economise le processeur)
+  local cle = couleur .. info .. texte .. eFond .. math.floor(p)
+  if cle == derniereCle then return '' end
+  derniereCle = cle
   SKIN:Bang('!SetVariable', 'CoulBat', couleur)
   SKIN:Bang('!SetVariable', 'InfoBat', info)
   SKIN:Bang('!SetVariable', 'EclairFond', eFond)
