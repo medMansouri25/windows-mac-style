@@ -11,7 +11,7 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 - **Barre des menus en haut** : logo, menus, batterie, Wi-Fi, recherche, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
 - **Dock en verre en bas** : icônes centrées, **effet loupe** au survol, petits points sous les applications ouvertes.
 - **Pastilles de volume et de luminosité** façon Apple : barre blanche et pourcentage, sous la barre des menus.
-- **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, jaune en économie d'énergie, rouge sous 20 %.
+- **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, **jaune en mode économie**, rouge sous 20 %.
 - 🔋 **Mode économie automatique sur batterie** (PC portables) : dès que vous débranchez, l'écran passe à 60 Hz, la luminosité est plafonnée et les programmes inutiles en arrière-plan sont fermés. **Plus d'autonomie, sans rien faire.** Tout revient au rebranchement. [Détails ↓](#-mode-économie-sur-batterie)
 - **Fond d'écran** Manhattan de nuit, en 4K.
 - Démarrage **invisible et rapide**, avec relance automatique si quelque chose plante.
@@ -39,7 +39,7 @@ Débranchez le chargeur (ou activez l'économiseur de batterie de Windows) : apr
 | Fréquence de l'écran | maximale (ex. 240 Hz) | **60 Hz** |
 | Luminosité | libre | **plafonnée à 60 %** |
 | Programmes en arrière-plan | ouverts | **fermés** : NVIDIA Overlay, Steam, Widgets, Spotify, WhatsApp, Discord, OMEN Light Studio… |
-| Icône de batterie | blanche avec éclair, ou verte en charge | blanche, jaune en économie d'énergie, rouge sous 20 % |
+| Icône de batterie | blanche avec éclair, ou verte en charge | **jaune** (mode économie actif), rouge sous 20 % |
 
 - **Au rebranchement**, tout revient : fréquence maximale, luminosité libre, et les programmes fermés sont relancés, fenêtres réduites (sauf ceux marqués `"relancer": false`, comme NVIDIA Overlay et Widgets).
 - Le délai de 15 secondes évite de tout basculer si le câble se débranche une seconde.

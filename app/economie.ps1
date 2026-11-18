@@ -57,7 +57,10 @@ if ($Mode -eq 'Activer') {
 
   # Ecran
   try {
-    $hzAvant = [int]((& (Join-Path $dossier 'frequence_ecran.ps1') -Lister) -replace '.*actuel (\d+) Hz.*','$1')
+    $infoHz = & (Join-Path $dossier 'frequence_ecran.ps1') -Lister
+    $hzAvant = [int]($infoHz -replace '.*actuel (\d+) Hz.*','$1')
+    # deja en frequence reduite (demarrage sur batterie, Windows ou OMEN) : au retour, remettre la frequence maximale
+    if ($hzAvant -le $eco.frequenceBatterie) { $hzAvant = ((($infoHz -replace '.*disponibles : ','' -replace ' Hz','') -split ',\s*') | ForEach-Object { [int]$_ } | Measure-Object -Maximum).Maximum }
     $lum = $null; try { $lum = Lum-Actuelle } catch { }
     if (-not (Test-Path $ecranFichier)) { @{ Hz = $hzAvant; Luminosite = $lum } | ConvertTo-Json | Set-Content $ecranFichier -Encoding UTF8 }
     if ($eco.frequenceBatterie -gt 0) { & (Join-Path $dossier 'frequence_ecran.ps1') -Hz $eco.frequenceBatterie | Out-Null }

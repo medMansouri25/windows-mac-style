@@ -18,10 +18,10 @@ function Update()
   elseif secteur == 1 then
     couleur, info = blanc, '#InfoPause#'
     eFond, eBord = sombre, blanc
-  elseif eco == 1 then
-    couleur, info, texte = jaune, '#InfoEco#', jaune
   elseif p < 20 then
     couleur = rouge
+  elseif eco == 1 then
+    couleur, info, texte = jaune, '#InfoEco#', jaune
   end
   if eco == 1 and secteur == 1 then texte = jaune end
   SKIN:Bang('!SetVariable', 'CoulBat', couleur)

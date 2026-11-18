@@ -7,7 +7,7 @@ EN HAUT — la barre des menus
   · À droite : batterie, Wi-Fi, recherche, centre de contrôle (son, luminosité,
     Bluetooth…), puis date et heure (clic = notifications et calendrier)
   · Batterie : blanche = sur batterie ; blanche avec éclair = branché (recharge
-    en pause) ; VERTE avec éclair = en charge ; JAUNE = économie d'énergie ;
+    en pause) ; VERTE avec éclair = en charge ; JAUNE = mode économie actif ;
     ROUGE = moins de 20 %
   · Les fenêtres agrandies s'arrêtent sous cette barre, comme sur Mac.
 

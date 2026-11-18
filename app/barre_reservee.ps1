@@ -63,14 +63,16 @@ public class BarreReservee : Form {
     SYSTEM_POWER_STATUS s;
     if (!GetSystemPowerStatus(out s)) return;
     int eco = (s.SystemStatusFlag == 1) ? 1 : 0;
+    bool sansBatterie = (s.BatteryFlag & 128) != 0;
+    if (!sansBatterie) ModeEconomie(s.ACLineStatus == 0 || eco == 1 ? 1 : 0);
+    // batterie jaune : economiseur Windows OU notre mode economie actif
+    if (modeApplique == 1) eco = 1;
     int charge = ((s.BatteryFlag & 8) != 0) ? 1 : 0;
     tours++;
     if (eco != dernierEco || charge != dernierCharge || tours % 12 == 0) {
       dernierEco = eco; dernierCharge = charge;
       Bang("[!SetVariable Economie " + eco + " \"MacWidgets\\BarreMenus\"][!SetVariable EnCharge " + charge + " \"MacWidgets\\BarreMenus\"]");
     }
-    bool sansBatterie = (s.BatteryFlag & 128) != 0;
-    if (!sansBatterie) ModeEconomie(s.ACLineStatus == 0 || eco == 1 ? 1 : 0);
   }
 
   // Mode economie : declenche apres 15 s d'etat stable (5 verifications), pour ignorer un cable qui bouge
