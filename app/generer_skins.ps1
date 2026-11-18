@@ -102,7 +102,7 @@ InfoCharge=Batterie en charge
 InfoEco=Mode économie actif
 InfoPause=Branché – recharge en pause (limite de charge)
 InfoChargeEco=En charge – économie d'énergie activée
-Start="wscript.exe" "$(Join-Path $App 'ouvrir_demarrer.vbs')"
+Start="wscript.exe" "$(Join-Path $App 'lancer_invisible.vbs')" "$(Join-Path $App 'raccourci.ps1')" "Demarrer"
 
 [MesureDate]
 Measure=Time
@@ -219,8 +219,8 @@ Meter=String
 MeterStyle=StyleIcone
 X=(#SCREENAREAWIDTH#-$(n 196))
 Text=[\xE721]
-LeftMouseUpAction=[#Start#]
-ToolTipText=Rechercher
+LeftMouseUpAction=["wscript.exe" "$lanceur" "$raccourci" "S"]
+ToolTipText=Rechercher (comme Spotlight)
 
 [MesureWifi]
 ; niveau envoye par barre_reservee.ps1 (0 = pas de connexion, 1 a 4 = arcs allumes)

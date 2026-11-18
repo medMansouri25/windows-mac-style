@@ -34,6 +34,7 @@ RACCOURCIS CLAVIER
   Touche Windows ⊞    → toutes les applications et recherche (comme Spotlight)
   ⊞ + D               → voir le bureau
   ⊞ + E               → fichiers (comme le Finder)
+  ⊞ + S               → rechercher (comme la loupe de la barre)
   ⊞ + A               → centre de contrôle
   ⊞ + N               → notifications et calendrier
   Alt + Tab           → passer d'une fenêtre à l'autre

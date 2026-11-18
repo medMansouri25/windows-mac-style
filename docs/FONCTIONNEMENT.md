@@ -81,6 +81,9 @@ Depuis Windows 11 24H2, l'ancienne API Wi-Fi (`WlanAPI`, utilisée par le plugin
 
 Le centre de contrôle et les notifications s'ouvrent en simulant **⊞ + A** et **⊞ + N** (`raccourci.ps1`). Ouverts par l'URI `ms-actioncenter:`, ces panneaux n'avaient pas le focus et ne se fermaient pas au clic extérieur.
 
+- **Loupe** : simule **⊞ + S** (recherche Windows, champ prêt pour la saisie).
+- **Logo et « Applications »** : `raccourci.ps1 Demarrer` envoie `WM_SYSCOMMAND` / `SC_TASKLIST` à la barre des tâches (`Shell_TrayWnd`), ce qui ouvre le menu Démarrer. Avec Ctrl+Échap ou la touche ⊞ simulés après un clic sur la barre, le menu ne s'ouvrait pas.
+
 ## Fichiers installés
 
 | Emplacement | Contenu |
