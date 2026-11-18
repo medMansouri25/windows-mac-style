@@ -18,6 +18,15 @@ EN BAS — le dock
   · Petit point sous les applications ouvertes.
   · À droite, une petite pastille garde les icônes cachées (Discord, Steam…).
 
+PANNEAU BATTERIE (clic sur la batterie ou son pourcentage)
+  · Santé de la batterie (capacité actuelle / d'origine), nombre de cycles,
+    capacité, temps restant ou temps de charge.
+  · Mode économie : Auto (selon le chargeur), Activé (même branché),
+    Désactivé (même sur batterie).
+  · Conservation de la batterie (PC HP) : charge limitée à 80 % pour qu'elle
+    dure plus longtemps. Windows demande l'autorisation (Oui) à chaque changement.
+  · Se ferme au clic à côté ou avec Échap.
+
 VOLUME ET LUMINOSITÉ
   · Quand vous les changez, une petite pastille façon Apple apparaît au centre,
     sous la barre, puis disparaît.

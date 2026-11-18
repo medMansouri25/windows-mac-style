@@ -88,7 +88,11 @@ public class BarreReservee : Form {
     if (!GetSystemPowerStatus(out s)) return;
     int eco = (s.SystemStatusFlag == 1) ? 1 : 0;
     bool sansBatterie = (s.BatteryFlag & 128) != 0;
-    if (!sansBatterie) ModeEconomie(s.ACLineStatus == 0 || eco == 1 ? 1 : 0);
+    string force = LireForce();
+    int auto = (s.ACLineStatus == 0 || eco == 1) ? 1 : 0;
+    int voulu = force == "on" ? 1 : force == "off" ? 0 : auto;
+    if (force != ecoForce) { ecoForce = force; modeCandidat = voulu; stable = 5; }   // choix fait dans le panneau : tout de suite
+    if (!sansBatterie || force != "auto") ModeEconomie(voulu);
     // batterie jaune : economiseur Windows OU notre mode economie actif
     if (modeApplique == 1) eco = 1;
     int charge = ((s.BatteryFlag & 8) != 0) ? 1 : 0;
@@ -141,10 +145,76 @@ public class BarreReservee : Form {
   }
   // envoi direct a Rainmeter (WM_COPYDATA), sans lancer de processus a chaque cran de volume
   void EnvoyerVolume(int n) {
+    EnvoyerBang("[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]");
+  }
+  void EnvoyerBang(string b) {
     IntPtr h = TrouverFenetre("DummyRainWClass", null); if (h == IntPtr.Zero) return;
-    string b = "[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]";
     var cd = new COPYDATA(); cd.dwData = (IntPtr)1; cd.cbData = (b.Length + 1) * 2; cd.lpData = Marshal.StringToHGlobalUni(b);
     try { IntPtr r; SendMessageTimeout(h, 0x4A, IntPtr.Zero, ref cd, 2, 1000, out r); } finally { Marshal.FreeHGlobal(cd.lpData); }
+  }
+
+  // --- Panneau batterie (clic sur l'icone) : effet verre, fermeture au clic a cote ou avec Echap ---
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern short GetAsyncKeyState(int v);
+  [StructLayout(LayoutKind.Sequential)] struct RECTP { public int l, t, r, b; }
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECTP r);
+  [StructLayout(LayoutKind.Sequential)] struct PT { public int x, y; }
+  [DllImport("user32.dll")] static extern bool GetCursorPos(out PT p);
+  [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr h, IntPtr rgn, bool redraw);
+  [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
+  [StructLayout(LayoutKind.Sequential)] struct ACCENT { public int Etat; public int Drapeaux; public uint Couleur; public int Anim; }
+  [StructLayout(LayoutKind.Sequential)] struct WCAD { public int Attribut; public IntPtr Donnees; public int Taille; }
+  [DllImport("user32.dll")] static extern int SetWindowCompositionAttribute(IntPtr h, ref WCAD d);
+  delegate bool EnumCB(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumCB cb, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  System.Windows.Forms.Timer minuteurPanneau; IntPtr panneau = IntPtr.Zero; bool panneauVisible, clicAvant; int recherche = 0;
+  int[] zoneBat = new int[] { -1, -1, -1, -1, 20 };   // icone batterie (x1,x2,y1,y2) + rayon des coins, ecrits par generer_skins.ps1
+
+  void LireZone() {
+    try { var v = System.IO.File.ReadAllText(Dossier + "zone_batterie.txt").Trim().Split(','); for (int i = 0; i < 5 && i < v.Length; i++) zoneBat[i] = int.Parse(v[i]); } catch { }
+  }
+  IntPtr TrouverSkin(string fin) {
+    IntPtr t = IntPtr.Zero;
+    EnumWindows((h, l) => { var sb = new System.Text.StringBuilder(300); GetWindowText(h, sb, 300); if (sb.ToString().EndsWith(fin)) { t = h; return false; } return true; }, IntPtr.Zero);
+    return t;
+  }
+  // verre : flou + teinte sombre de Windows (acrylique), coins arrondis
+  void Habiller(IntPtr h) {
+    RECTP r; GetWindowRect(h, out r); int ray = zoneBat[4] * 2;
+    SetWindowRgn(h, CreateRoundRectRgn(0, 0, r.r - r.l + 1, r.b - r.t + 1, ray, ray), true);
+    var a = new ACCENT(); a.Etat = 4; a.Drapeaux = 2; a.Couleur = 0x8C1E161A;
+    int taille = Marshal.SizeOf(a); IntPtr p = Marshal.AllocHGlobal(taille);
+    try { Marshal.StructureToPtr(a, p, false); var d = new WCAD(); d.Attribut = 19; d.Donnees = p; d.Taille = taille; SetWindowCompositionAttribute(h, ref d); }
+    finally { Marshal.FreeHGlobal(p); }
+  }
+  void SurveillerPanneau(object o, EventArgs e) {
+    if (panneau == IntPtr.Zero || !IsWindow(panneau)) {
+      if (recherche++ % 20 != 0) return;           // cherche la fenetre au plus toutes les 2,4 s
+      panneau = TrouverSkin("PanneauBatterie.ini"); panneauVisible = false; if (panneau == IntPtr.Zero) return;
+    }
+    bool vis = IsWindowVisible(panneau);
+    if (vis && !panneauVisible) Habiller(panneau);
+    panneauVisible = vis;
+    bool clic = (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0;
+    bool echap = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
+    if (vis && ((clic && !clicAvant) || echap)) {
+      PT p; GetCursorPos(out p); RECTP r; GetWindowRect(panneau, out r);
+      bool dedans = p.x >= r.l && p.x < r.r && p.y >= r.t && p.y < r.b;
+      bool surIcone = p.x >= zoneBat[0] && p.x <= zoneBat[1] && p.y >= zoneBat[2] && p.y <= zoneBat[3];
+      if (echap || (!dedans && !surIcone)) EnvoyerBang("[!Hide \"MacWidgets\\PanneauBatterie\"]");
+    }
+    clicAvant = clic;
+  }
+
+  // --- Mode eco choisi dans le panneau : auto (selon le chargeur), on (force), off (coupe) ---
+  string ecoForce = "auto";
+  // dans le dossier du panneau : Rainmeter n'accepte d'ecrire (!WriteKeyValue) que dans ses skins
+  static readonly string FichierEtat = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"Rainmeter\Skins\MacWidgets\PanneauBatterie\etat.inc");
+  string LireForce() {
+    try { foreach (var l in System.IO.File.ReadAllLines(FichierEtat)) { var t = l.Trim(); if (t.StartsWith("EcoForce=")) return t.Substring(9).Trim().ToLower(); } } catch { }
+    return "auto";
   }
 
   // --- Luminosite : Windows previent a chaque changement ---
@@ -176,6 +246,8 @@ public class BarreReservee : Form {
     minuteur = new System.Windows.Forms.Timer(); minuteur.Interval = 3000; minuteur.Tick += Verifier; minuteur.Start();
     EcouterLuminosite();
     EcouterVolume();
+    LireZone();
+    minuteurPanneau = new System.Windows.Forms.Timer(); minuteurPanneau.Interval = 120; minuteurPanneau.Tick += SurveillerPanneau; minuteurPanneau.Start();
   }
   protected override CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x80 | 0x08000000; return p; } }
   protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Inscrire(); }

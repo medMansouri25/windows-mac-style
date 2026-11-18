@@ -225,6 +225,13 @@ Draggable=0
 SnapEdges=0
 KeepOnScreen=0
 AlwaysOnTop=2
+
+[MacWidgets\PanneauBatterie]
+Active=1
+Draggable=0
+SnapEdges=0
+KeepOnScreen=0
+AlwaysOnTop=2
 "@
 [IO.File]::WriteAllText($rmIni, $ini, [Text.Encoding]::Unicode)
 # Rainmeter ne doit pas se lancer seul (c'est la tache de demarrage qui le lance correctement)

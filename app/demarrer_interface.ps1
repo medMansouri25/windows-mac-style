@@ -35,6 +35,7 @@ foreach ($c in 'illustro\Clock','illustro\Disk','illustro\System','illustro\Welc
 & $rm '!ActivateConfig' 'MacWidgets\BarreMenus' 'BarreMenus.ini'
 & $rm '!ActivateConfig' 'MacWidgets\Volume' 'Volume.ini'
 & $rm '!ActivateConfig' 'MacWidgets\Luminosite' 'Luminosite.ini'
+if (Test-Path (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Rainmeter\Skins\MacWidgets\PanneauBatterie')) { & $rm '!ActivateConfig' 'MacWidgets\PanneauBatterie' 'PanneauBatterie.ini' }
 Note "Barre des menus activee"
 
 # 4) Fond d'ecran : seulement si Windows l'a remplace

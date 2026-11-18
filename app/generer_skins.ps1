@@ -23,6 +23,7 @@ function f($v) { ([math]::Round($v * $S, 1)).ToString([Globalization.CultureInfo
 $hp = n $H; $cy = n ($H / 2)
 $lanceur = Join-Path $App 'lancer_invisible.vbs'
 $raccourci = Join-Path $App 'raccourci.ps1'
+$infos = Join-Path $App 'infos_batterie.ps1'
 $guide = Join-Path $App 'GUIDE.txt'
 foreach ($d in 'BarreMenus','Volume','Luminosite') { New-Item -ItemType Directory -Force (Join-Path $Skins $d) | Out-Null }
 function Ecrire($chemin, $texte) { [IO.File]::WriteAllText($chemin, $texte, [Text.Encoding]::Unicode) }
@@ -42,7 +43,7 @@ Shape3=Rectangle $(n 2),$(n 2),(Max([MesureBatterie],4)*$(n 22)/100),$(n 8.5),$(
 Shape4=Path Eclair | Fill Color #EclairFond# | StrokeWidth $(f 0.8) | Stroke Color #EclairBord# | StrokeLineJoin Round
 Eclair=$(f 14.4),$(f 1.5) | LineTo $(f 9.5),$(f 7.3) | LineTo $(f 12.6),$(f 7.3) | LineTo $(f 11.6),$(f 11.2) | LineTo $(f 16.5),$(f 5.3) | LineTo $(f 13.4),$(f 5.3) | ClosePath 1
 DynamicVariables=1
-LeftMouseUpAction=["ms-settings:batterysaver"]
+LeftMouseUpAction=[!Toggle "MacWidgets\PanneauBatterie"]["wscript.exe" "$lanceur" "$infos"]
 ToolTipText=#InfoBat#
 
 [BatteriePct]
@@ -52,7 +53,7 @@ MeasureName=MesureBatterie
 StringAlign=RightCenter
 X=(#SCREENAREAWIDTH#-$(n 288))
 Text=%1 %
-LeftMouseUpAction=["ms-settings:batterysaver"]
+LeftMouseUpAction=[!Toggle "MacWidgets\PanneauBatterie"]["wscript.exe" "$lanceur" "$infos"]
 DynamicVariables=1
 "@
 }
@@ -439,5 +440,230 @@ UpdateDivider=-1
 "@
 Ecrire (Join-Path $Skins 'Volume\Volume.ini') ((Pastille 'Volume' 'E995' $mesVolume).Replace('__UPDATE__','1000'))
 Ecrire (Join-Path $Skins 'Luminosite\Luminosite.ini') ((Pastille 'Luminosite' 'E706' $mesLum).Replace('__UPDATE__','1000'))
+
+# ------------------------- Panneau batterie (clic sur l'icone) -------------------------
+if ($aBatterie) {
+New-Item -ItemType Directory -Force (Join-Path $Skins 'PanneauBatterie') | Out-Null
+$etat = Join-Path $Skins 'PanneauBatterie\etat.inc'   # dans le skin : Rainmeter n'ecrit que dans ses dossiers
+if (-not (Test-Path $etat)) { Ecrire $etat "[Variables]`r`nEcoForce=auto`r`nConservation=inconnu`r`n" }
+$conservation = Join-Path $App 'conservation.ps1'
+$pW = n 300; $pH = n 308
+$panX = [math]::Max(0, $largeur - [int](n 276) + [int](n 36) - [int]$pW); $panY = [int]$hp + [int](n 6)
+# zone de l'icone (un clic dessus ouvre/ferme deja le panneau) + rayon des coins, lus par barre_reservee.ps1
+Set-Content (Join-Path $App 'zone_batterie.txt') ("{0},{1},0,{2},{3}" -f ($largeur - [int](n 330)), ($largeur - [int](n 276) + [int](n 34)), $hp, (n 14))
+$segW = 268 / 3
+function Segment($nom, $i, $texte, $valeur) {
+  $x = 16 + $i * $segW
+@"
+
+[Seg$nom]
+Meter=Shape
+X=$(n ($x + 2))
+Y=$(n 178)
+Shape=Rectangle 0,0,$(n ($segW - 4)),$(n 22),$(n 6) | Fill Color #F$nom# | StrokeWidth 0
+DynamicVariables=1
+LeftMouseUpAction=[!SetVariable EcoForce $valeur][!WriteKeyValue Variables EcoForce $valeur "$etat"][!UpdateMeasure MesureEcoForce][!UpdateMeter *][!Redraw]
+
+[SegTexte$nom]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n ($x + $segW / 2))
+Y=$(n 189)
+StringAlign=CenterCenter
+FontSize=$(n 8.3)
+FontColor=#T$nom#
+Text=$texte
+DynamicVariables=1
+"@
+}
+function Ligne($y) { "`r`n[Sep$y]`r`nMeter=Shape`r`nX=$(n 16)`r`nY=$(n $y)`r`nShape=Rectangle 0,0,$(n 268),$(f 1),0 | Fill Color 255,255,255,40 | StrokeWidth 0`r`n" }
+function Rangee($nom, $y, $libelle, $var) {
+@"
+
+[Lib$nom]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n $y)
+FontColor=#Gris#
+Text=$libelle
+
+[Val$nom]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 284)
+Y=$(n $y)
+StringAlign=RightCenter
+Text=#$var#
+DynamicVariables=1
+"@
+}
+$panneau = @"
+[Rainmeter]
+Update=-1
+AccurateText=1
+OnRefreshAction=[!Move "$panX" "$panY"][!ZPos "2"][!Draggable "0"][!KeepOnScreen "0"][!SnapEdges "0"][!Hide]
+
+[Metadata]
+Name=Panneau batterie facon Apple
+Information=S'ouvre au clic sur l'icone de batterie. Verre et fermeture au clic exterieur : barre_reservee.ps1.
+
+[Variables]
+Police=Segoe UI Variable Text
+Txt=255,255,255,255
+Gris=255,255,255,165
+Source=…
+Sante=…
+Cycles=…
+Capacite=…
+EcoActif=…
+FAuto=255,255,255,230
+FOn=0,0,0,1
+FOff=0,0,0,1
+TAuto=25,22,30,255
+TOn=255,255,255,255
+TOff=255,255,255,255
+CFond=120,120,128,170
+CRond=$(n 22)
+ConsCible=On
+@Include=$etat
+
+[StyleTexte]
+FontFace=#Police#
+FontSize=$(n 9.3)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=LeftCenter
+SolidColor=0,0,0,0
+
+[MesurePct]
+Measure=Plugin
+Plugin=PowerPlugin
+PowerState=Percent
+
+[MesureEcoForce]
+Measure=String
+String=#EcoForce#
+DynamicVariables=1
+IfMatch=^on$
+IfMatchAction=[!SetVariable FAuto "0,0,0,1"][!SetVariable FOn "255,255,255,230"][!SetVariable FOff "0,0,0,1"][!SetVariable TAuto "#Txt#"][!SetVariable TOn "25,22,30,255"][!SetVariable TOff "#Txt#"]
+IfMatch2=^off$
+IfMatchAction2=[!SetVariable FAuto "0,0,0,1"][!SetVariable FOn "0,0,0,1"][!SetVariable FOff "255,255,255,230"][!SetVariable TAuto "#Txt#"][!SetVariable TOn "#Txt#"][!SetVariable TOff "25,22,30,255"]
+IfMatch3=^(?!on$|off$)
+IfMatchAction3=[!SetVariable FAuto "255,255,255,230"][!SetVariable FOn "0,0,0,1"][!SetVariable FOff "0,0,0,1"][!SetVariable TAuto "25,22,30,255"][!SetVariable TOn "#Txt#"][!SetVariable TOff "#Txt#"]
+IfMatchMode=0
+
+[MesureCons]
+Measure=String
+String=#Conservation#
+DynamicVariables=1
+IfMatch=^On$
+IfMatchAction=[!SetVariable CFond "52,199,89,255"][!SetVariable CRond "$(n 31)"][!SetVariable ConsCible "Off"]
+IfMatch2=^Off$
+IfMatchAction2=[!SetVariable CFond "120,120,128,170"][!SetVariable CRond "$(n 13)"][!SetVariable ConsCible "On"]
+IfMatch3=^attente$
+IfMatchAction3=[!SetVariable CFond "255,255,255,70"][!SetVariable CRond "$(n 22)"][!SetVariable ConsCible "attente"]
+IfMatch4=^(?!On$|Off$|attente$)
+IfMatchAction4=[!SetVariable CFond "120,120,128,170"][!SetVariable CRond "$(n 22)"][!SetVariable ConsCible "On"]
+IfMatchMode=0
+
+[Fond]
+Meter=Shape
+Shape=Rectangle $(f 0.5),$(f 0.5),$(f (300 - 1)),$(f (308 - 1)),$(n 14) | Fill Color 20,18,28,60 | StrokeWidth $(f 1) | Stroke Color 255,255,255,55
+
+[Titre]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 24)
+FontSize=$(n 10.7)
+FontWeight=600
+Text=Batterie
+
+[Pct]
+Meter=String
+MeterStyle=StyleTexte
+MeasureName=MesurePct
+X=$(n 284)
+Y=$(n 24)
+StringAlign=RightCenter
+FontSize=$(n 10.7)
+FontWeight=600
+Text=%1 %
+
+[Source]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 46)
+FontSize=$(n 8.3)
+FontColor=#Gris#
+Text=#Source#
+DynamicVariables=1
+$(Ligne 62)$(Rangee 'Sante' 82 'État de la batterie' 'Sante')$(Rangee 'Cycles' 104 'Nombre de cycles' 'Cycles')$(Rangee 'Capacite' 126 'Capacité maximale' 'Capacite')$(Ligne 144)
+[LibEco]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 162)
+FontWeight=600
+Text=Mode économie
+
+[EtatEco]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 284)
+Y=$(n 162)
+StringAlign=RightCenter
+FontSize=$(n 8.3)
+FontColor=#Gris#
+Text=#EcoActif#
+DynamicVariables=1
+
+[Piste]
+Meter=Shape
+X=$(n 16)
+Y=$(n 176)
+Shape=Rectangle 0,0,$(n 268),$(n 26),$(n 8) | Fill Color 255,255,255,28 | StrokeWidth 0
+$(Segment 'Auto' 0 'Auto' 'auto')$(Segment 'On' 1 'Activé' 'on')$(Segment 'Off' 2 'Désactivé' 'off')$(Ligne 218)
+[LibCons]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 236)
+FontWeight=600
+Text=Conservation de la batterie
+
+[SousCons]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 254)
+FontSize=$(n 7.7)
+FontColor=#Gris#
+Text=Charge limitée à 80 % (réglage HP)
+
+[Interrupteur]
+Meter=Shape
+X=$(n 240)
+Y=$(n 232)
+Shape=Rectangle 0,0,$(n 44),$(n 26),$(n 13) | Fill Color #CFond# | StrokeWidth 0
+Shape2=Ellipse #CRond#,$(n 13),$(n 11) | Fill Color 255,255,255,255 | StrokeWidth 0
+DynamicVariables=1
+LeftMouseUpAction=["wscript.exe" "$lanceur" "$conservation" "#ConsCible#"][!SetVariable Conservation attente][!UpdateMeasure MesureCons][!UpdateMeter *][!Redraw]
+ToolTipText=Windows va demander l'autorisation (Oui/Non)
+$(Ligne 272)
+[Reglages]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 16)
+Y=$(n 290)
+Text=Réglages de la batterie…
+LeftMouseUpAction=["ms-settings:batterysaver"][!Hide]
+MouseOverAction=[!SetOption Reglages FontColor "120,180,255,255"][!UpdateMeter Reglages][!Redraw]
+MouseLeaveAction=[!SetOption Reglages FontColor "#Txt#"][!UpdateMeter Reglages][!Redraw]
+"@
+Ecrire (Join-Path $Skins 'PanneauBatterie\PanneauBatterie.ini') $panneau
+}
 
 [pscustomobject]@{ Echelle = $S; LargeurPx = $largeur; Batterie = $aBatterie; PastilleX = $px; PastilleY = $py; BarrePx = $hp }

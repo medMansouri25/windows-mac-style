@@ -10,6 +10,7 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
 - **Barre des menus en haut** : logo, menus, batterie, Wi-Fi, recherche, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
 - **Dock en verre en bas** : icônes centrées, **effet loupe** au survol, petits points sous les applications ouvertes.
+- 🔋 **Panneau batterie en verre** (clic sur la batterie) : santé de la batterie en %, nombre de cycles, capacité, temps restant ; mode économie **Auto / Activé / Désactivé** ; **conservation de la batterie** (charge limitée à 80 %, PC HP) avec la fenêtre d'autorisation de Windows à chaque changement.
 - **Wi-Fi dynamique** : comme sur Mac, les arcs s'allument selon la force du signal, et l'icône est barrée sans connexion ou sans accès à Internet.
 - **Pastilles de volume et de luminosité** façon Apple : barre blanche et pourcentage, sous la barre des menus.
 - **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, **jaune en mode économie**, rouge sous 20 %.
@@ -123,6 +124,8 @@ app/                     → l'interface (copiée dans %LOCALAPPDATA%\InterfaceM
   frequence_ecran.ps1    → change la fréquence de l'écran (60/240 Hz…)
   fond_ecran.ps1         → applique le fond d'écran
   batterie.lua           → logique de l'icône de batterie
+  infos_batterie.ps1     → remplit le panneau batterie (santé, cycles, temps restant)
+  conservation.ps1       → mode conservation HP (demande l'autorisation à chaque fois)
   raccourci.ps1, *.vbs   → lanceurs invisibles et raccourcis clavier
 install/
   installer.ps1          → installation complète

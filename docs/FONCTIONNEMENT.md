@@ -77,6 +77,16 @@ Depuis Windows 11 24H2, l'ancienne API Wi-Fi (`WlanAPI`, utilisée par le plugin
 - Niveaux : 0 = pas de connexion ou pas d'Internet (icône barrée) ; 1 à 4 = arcs allumés (barres 0-1 → 1, 2 → 2, 3 → 3, 4-5 → 4). Une connexion par câble s'affiche comme un signal plein.
 - Affichage : une icône Wi-Fi grise en fond, avec par-dessus en blanc le nombre d'arcs du niveau, comme sur Mac. Le survol indique le nom du réseau et le signal.
 
+## Panneau batterie
+
+Skin `MacWidgets\PanneauBatterie`, ouvert par un clic sur l'icône de batterie (`!Toggle`). Le même clic lance `infos_batterie.ps1`.
+
+- **Infos** (`infos_batterie.ps1`) : WMI `root\wmi` (`BatteryStatus`, `BatteryFullChargedCapacity`, `BatteryCycleCount`). La capacité d'origine vient du rapport `powercfg /batteryreport /xml` (environ 1 s), gardé une semaine dans `batterie_origine.txt`, car la classe WMI `BatteryStaticData` est refusée sans droits administrateur. Santé = capacité actuelle / d'origine. Les valeurs sont envoyées à Rainmeter par `WM_COPYDATA`.
+- **Verre et fermeture** (`barre_reservee.ps1`) : un minuteur de 120 ms repère la fenêtre du panneau. À chaque ouverture, il applique le flou acrylique de Windows (`SetWindowCompositionAttribute`) et des coins arrondis (`SetWindowRgn`). Un clic hors du panneau et hors de l'icône (zone lue dans `zone_batterie.txt`), ou la touche Échap, le referme.
+- **Mode économie** : le choix Auto / Activé / Désactivé est écrit par Rainmeter dans `PanneauBatterie\etat.inc`. Rainmeter n'écrit (`!WriteKeyValue`) que dans ses dossiers de skins. Le moteur lit ce fichier toutes les 3 s. Un choix manuel s'applique sans attendre les 15 s.
+- **Conservation** (`conservation.ps1`, PC HP) : réglage BIOS `Battery Health Manager` (« Maximize my battery health On/Off ») via WMI `root\HP\InstrumentedBIOS` (`HP_BIOSSettingInterface.SetBIOSSetting`). Il faut les droits administrateur : le script se relance avec `-Verb RunAs`, Windows demande Oui/Non à chaque fois, et aucun droit permanent n'est installé. L'état connu est gardé dans `etat.inc`. La désinstallation ne touche pas à ce réglage du BIOS.
+- Fermé, le panneau ne se met pas à jour (`Update=-1`) : il ne coûte presque rien.
+
 ## Panneaux Windows depuis la barre
 
 Le centre de contrôle et les notifications s'ouvrent en simulant **⊞ + A** et **⊞ + N** (`raccourci.ps1`). Ouverts par l'URI `ms-actioncenter:`, ces panneaux n'avaient pas le focus et ne se fermaient pas au clic extérieur.
