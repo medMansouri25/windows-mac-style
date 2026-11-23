@@ -513,7 +513,7 @@ Information=S'ouvre au clic sur l'icone de batterie. Verre et fermeture au clic 
 [Variables]
 Police=Segoe UI Variable Text
 Txt=255,255,255,255
-Gris=255,255,255,165
+Gris=255,255,255,195
 Source=…
 Sante=…
 Cycles=…
@@ -773,7 +773,7 @@ Information=S'ouvre au clic sur l'icone de la barre. Verre, curseurs, Wi-Fi, Blu
 Police=Segoe UI Variable Text
 Icones=Segoe Fluent Icons
 Txt=255,255,255,255
-Gris=255,255,255,165
+Gris=255,255,255,195
 WifiFond=255,255,255,45
 WifiTexte=…
 BtFond=255,255,255,45

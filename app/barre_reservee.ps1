@@ -71,7 +71,7 @@ public static class VerreUI {
       using (var g = System.Drawing.Graphics.FromImage(ecran)) {
         g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
         g.DrawImage(petit, new System.Drawing.Rectangle(0, 0, z.Width, z.Height));
-        using (var v = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(78, 28, 26, 34))) g.FillRectangle(v, 0, 0, z.Width, z.Height);
+        using (var v = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(102, 24, 22, 30))) g.FillRectangle(v, 0, 0, z.Width, z.Height);
         using (var v = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(12, 255, 255, 255))) g.FillRectangle(v, 0, 0, z.Width, z.Height);
       }
     }
@@ -284,7 +284,7 @@ public class Spotlight : FenetreVerre {
     using (var ic = VerreUI.Icones(20)) VerreUI.Texte(g, "", ic, Blanc(170), new System.Drawing.RectangleF(VerreUI.N(20), 0, VerreUI.N(30), Haut), false);
     using (var f = VerreUI.Police(22, false)) {
       var zone = new System.Drawing.RectangleF(VerreUI.N(58), 0, L - VerreUI.N(80), Haut);
-      if (texte.Length == 0) VerreUI.Texte(g, "Recherche Spotlight", f, Blanc(110), zone, false);
+      if (texte.Length == 0) VerreUI.Texte(g, "Recherche Spotlight", f, Blanc(150), zone, false);
       else {
         if (toutSelect) { var t = g.MeasureString(texte, f); using (var b = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(120, 10, 132, 255))) g.FillRectangle(b, zone.X + 2, (Haut - t.Height) / 2, t.Width - 4, t.Height); }
         VerreUI.Texte(g, texte, f, Blanc(255), zone, false);
@@ -300,7 +300,7 @@ public class Spotlight : FenetreVerre {
     using (var fSec = VerreUI.Police(11.5, true)) using (var fT = VerreUI.Police(14.5, false)) using (var fD = VerreUI.Police(12, false))
     for (int i = 0; i < res.Count; i++) {
       var r = res[i];
-      if (r.Section != sec) { sec = r.Section; VerreUI.Texte(g, sec.ToUpperInvariant(), fSec, Blanc(130), new System.Drawing.RectangleF(VerreUI.N(22), y, L - VerreUI.N(44), Entete), false); y += Entete; }
+      if (r.Section != sec) { sec = r.Section; VerreUI.Texte(g, sec.ToUpperInvariant(), fSec, Blanc(170), new System.Drawing.RectangleF(VerreUI.N(22), y, L - VerreUI.N(44), Entete), false); y += Entete; }
       if (i == choix) using (var b = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(225, 10, 132, 255))) using (var pth = VerreUI.Rond(new System.Drawing.RectangleF(VerreUI.N(10), y, L - VerreUI.N(20), Ligne), VerreUI.N(8))) g.FillPath(b, pth);
       var img = r.Icone != null ? VerreUI.Icone(r.Icone, VerreUI.N(28)) : null;
       if (img != null) g.DrawImage(img, VerreUI.N(22), y + (Ligne - VerreUI.N(28)) / 2, VerreUI.N(28), VerreUI.N(28));
@@ -308,7 +308,7 @@ public class Spotlight : FenetreVerre {
       float xt = VerreUI.N(62), lt = L - VerreUI.N(84);
       var tm = g.MeasureString(r.Titre, fT); float lTitre = Math.Min(tm.Width, lt * 0.62f);
       VerreUI.Texte(g, r.Titre, fT, Blanc(255), new System.Drawing.RectangleF(xt, y, lTitre + 4, Ligne), false);
-      VerreUI.Texte(g, r.Detail, fD, Blanc(i == choix ? 210 : 140), new System.Drawing.RectangleF(xt + lTitre + VerreUI.N(10), y, lt - lTitre - VerreUI.N(10), Ligne), false);
+      VerreUI.Texte(g, r.Detail, fD, Blanc(i == choix ? 225 : 175), new System.Drawing.RectangleF(xt + lTitre + VerreUI.N(10), y, lt - lTitre - VerreUI.N(10), Ligne), false);
       y += Ligne;
     }
   }
@@ -388,14 +388,14 @@ public class Agenda : FenetreVerre {
       float cw = lu / 7f, y0 = VerreUI.N(52);
       string[] jours = { "L", "M", "M", "J", "V", "S", "D" };
       using (var sf = new System.Drawing.StringFormat { Alignment = System.Drawing.StringAlignment.Center, LineAlignment = System.Drawing.StringAlignment.Center })
-      using (var bg = new System.Drawing.SolidBrush(Blanc(130))) {
+      using (var bg = new System.Drawing.SolidBrush(Blanc(170))) {
         for (int i = 0; i < 7; i++) g.DrawString(jours[i], fJ, bg, new System.Drawing.RectangleF(m + i * cw, y0, cw, VerreUI.N(24)), sf);
         int decal = ((int)mois.DayOfWeek + 6) % 7; var debut = mois.AddDays(-decal); float ch = VerreUI.N(38);
         for (int k = 0; k < 42; k++) {
           var d = debut.AddDays(k); var r = new System.Drawing.RectangleF(m + (k % 7) * cw, y0 + VerreUI.N(26) + (k / 7) * ch, cw, ch);
           bool auj = d == DateTime.Today, dansMois = d.Month == mois.Month;
           if (auj) using (var b = new System.Drawing.SolidBrush(Bleu)) { float s = VerreUI.N(32); g.FillEllipse(b, r.X + (r.Width - s) / 2, r.Y + (r.Height - s) / 2, s, s); }
-          using (var b = new System.Drawing.SolidBrush(auj ? Blanc(255) : dansMois ? Blanc(k % 7 >= 5 ? 175 : 235) : Blanc(70))) g.DrawString(d.Day.ToString(), auj ? fDg : fD, b, r, sf);
+          using (var b = new System.Drawing.SolidBrush(auj ? Blanc(255) : dansMois ? Blanc(k % 7 >= 5 ? 215 : 245) : Blanc(105))) g.DrawString(d.Day.ToString(), auj ? fDg : fD, b, r, sf);
         }
       }
     }
@@ -406,7 +406,7 @@ public class Agenda : FenetreVerre {
       VerreUI.Texte(g, "Notifications", fH, Blanc(255), new System.Drawing.RectangleF(m, y + VerreUI.N(6), lu, VerreUI.N(32)), false);
       if (notifs.Count > 0) { var re = new System.Drawing.RectangleF(L - m - VerreUI.N(110), y + VerreUI.N(6), VerreUI.N(110), VerreUI.N(32)); VerreUI.Texte(g, "Tout effacer", fL, Blanc(190), re, true); zones.Add(Tuple.Create(re, "effacer")); }
       y += VerreUI.N(44);
-      if (notifs.Count == 0) { VerreUI.Texte(g, "Aucune notification", fL, Blanc(140), new System.Drawing.RectangleF(m, y, lu, VerreUI.N(36)), false); y += VerreUI.N(44); }
+      if (notifs.Count == 0) { VerreUI.Texte(g, "Aucune notification", fL, Blanc(175), new System.Drawing.RectangleF(m, y, lu, VerreUI.N(36)), false); y += VerreUI.N(44); }
       for (int i = 0; i < notifs.Count && i < MaxNotifs; i++) {
         var n = notifs[i]; var carte = new System.Drawing.RectangleF(m, y, lu, VerreUI.N(66));
         using (var b = new System.Drawing.SolidBrush(Blanc(26))) using (var pth = VerreUI.Rond(carte, VerreUI.N(12))) g.FillPath(b, pth);
@@ -414,14 +414,14 @@ public class Agenda : FenetreVerre {
         var img = string.IsNullOrEmpty(n.Aumid) ? null : VerreUI.Icone(@"shell:AppsFolder\" + n.Aumid, VerreUI.N(32));
         if (img != null) g.DrawImage(img, carte.X + VerreUI.N(12), carte.Y + VerreUI.N(17), VerreUI.N(32), VerreUI.N(32));
         float xt = carte.X + VerreUI.N(54), lt = carte.Right - xt - VerreUI.N(12);
-        VerreUI.Texte(g, n.App, fA, Blanc(150), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(5), lt - VerreUI.N(80), VerreUI.N(18)), false);
-        VerreUI.Texte(g, Quand(n.Date), fA, Blanc(150), new System.Drawing.RectangleF(carte.Right - VerreUI.N(92), carte.Y + VerreUI.N(5), VerreUI.N(80), VerreUI.N(18)), true);
+        VerreUI.Texte(g, n.App, fA, Blanc(185), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(5), lt - VerreUI.N(80), VerreUI.N(18)), false);
+        VerreUI.Texte(g, Quand(n.Date), fA, Blanc(185), new System.Drawing.RectangleF(carte.Right - VerreUI.N(92), carte.Y + VerreUI.N(5), VerreUI.N(80), VerreUI.N(18)), true);
         VerreUI.Texte(g, n.Titre, fT, Blanc(255), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(23), lt, VerreUI.N(20)), false);
-        VerreUI.Texte(g, n.Corps, fC, Blanc(185), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(42), lt, VerreUI.N(20)), false);
+        VerreUI.Texte(g, n.Corps, fC, Blanc(210), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(42), lt, VerreUI.N(20)), false);
         zones.Add(Tuple.Create(carte, "n:" + n.Id));
         y += VerreUI.N(74);
       }
-      if (notifs.Count > MaxNotifs) { VerreUI.Texte(g, "+" + (notifs.Count - MaxNotifs) + " autres notifications", fA, Blanc(150), new System.Drawing.RectangleF(m, y - VerreUI.N(4), lu, VerreUI.N(26)), false); y += VerreUI.N(26); }
+      if (notifs.Count > MaxNotifs) { VerreUI.Texte(g, "+" + (notifs.Count - MaxNotifs) + " autres notifications", fA, Blanc(180), new System.Drawing.RectangleF(m, y - VerreUI.N(4), lu, VerreUI.N(26)), false); y += VerreUI.N(26); }
       using (var p = new System.Drawing.Pen(Blanc(40), 1)) g.DrawLine(p, m, y + VerreUI.N(2), L - m, y + VerreUI.N(2));
       var rw = new System.Drawing.RectangleF(m, y + VerreUI.N(6), lu, VerreUI.N(34));
       VerreUI.Texte(g, "Centre de notifications Windows…", fL, Blanc(230), rw, false); zones.Add(Tuple.Create(rw, "windows"));
@@ -606,7 +606,7 @@ public class BarreReservee : Form {
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             g.DrawImage(petit, new System.Drawing.Rectangle(0, 0, w, h));
-            using (var voile = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(78, 28, 26, 34))) g.FillRectangle(voile, 0, 0, w, h);
+            using (var voile = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(102, 24, 22, 30))) g.FillRectangle(voile, 0, 0, w, h);
           }
         }
         // coins arrondis transparents (comme la forme du panneau)
