@@ -544,7 +544,20 @@ public class BarreReservee : Form {
   // envoi direct a Rainmeter (WM_COPYDATA), sans lancer de processus a chaque cran de volume
   void EnvoyerVolume(int n) {
     if (pCC.Vis) { EnvoyerCC("Son", n); return; }   // centre de controle ouvert : on bouge son curseur, pas la pastille
-    EnvoyerBang("[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]");
+    EnvoyerBang(FondPastille(pVol, pLum) + "[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]");
+  }
+  // pastilles volume / luminosite : meme verre que les panneaux (photo floutee du fond), prise seulement
+  // au premier appui (pastille encore cachee) et jamais quand l'autre pastille occupe deja la place
+  Panneau pVol = new Panneau { Nom = "Volume" }, pLum = new Panneau { Nom = "Luminosite" };
+  string FondPastille(Panneau p, Panneau autre) {
+    try {
+      if (p.H == IntPtr.Zero || !IsWindow(p.H)) p.H = TrouverSkin(p.Nom + ".ini");
+      if (autre.H == IntPtr.Zero || !IsWindow(autre.H)) autre.H = TrouverSkin(autre.Nom + ".ini");
+      if (p.H == IntPtr.Zero || IsWindowVisible(p.H) || (autre.H != IntPtr.Zero && IsWindowVisible(autre.H))) return "";
+      RECTP r; GetWindowRect(p.H, out r); p.Zone[4] = Math.Max(1, (r.b - r.t) / 2);   // forme de pilule
+      string img = Verre(p);
+      return img == "" ? "" : "[!SetVariable FondVerre \"" + img + "\" \"MacWidgets\\" + p.Nom + "\"]";
+    } catch { return ""; }
   }
   void EnvoyerBang(string b) {
     IntPtr h = TrouverFenetre("DummyRainWClass", null); if (h == IntPtr.Zero) return;
@@ -804,7 +817,7 @@ public class BarreReservee : Form {
         try {
           int v = Convert.ToInt32(e.NewEvent["Brightness"]);
           if (pCC.Vis) { EnvoyerCC("Lum", v); return; }
-          EnvoyerBang("[!SetVariable Lum " + v + " \"MacWidgets\\Luminosite\"][!UpdateMeasure MesureLum \"MacWidgets\\Luminosite\"]");
+          EnvoyerBang(FondPastille(pLum, pVol) + "[!SetVariable Lum " + v + " \"MacWidgets\\Luminosite\"][!UpdateMeasure MesureLum \"MacWidgets\\Luminosite\"]");
         } catch { }
       };
       veilleLum.Start();

@@ -341,6 +341,7 @@ Information=Pastille sous la barre des menus. Apparait au changement, disparait 
 [Variables]
 Icones=Segoe Fluent Icons
 Police=Segoe UI Variable Text
+FondVerre=
 $mesures
 
 [Minuteur]
@@ -349,10 +350,21 @@ Plugin=ActionTimer
 ActionList1=Wait 1600 | Masquer
 Masquer=[!Hide]
 
+[FondVerre]
+; photo floutee du fond, preparee par barre_reservee.ps1 juste avant l'affichage (meme verre que les panneaux)
+Meter=Image
+ImageName=#FondVerre#
+X=0
+Y=0
+W=$([int]$largPastille)
+H=$([int]$hautPastille)
+UpdateDivider=-1
+DynamicVariables=1
+
 [Fond]
 Meter=Shape
 UpdateDivider=-1
-Shape=Rectangle 1,1,$([int]$largPastille-2),$([int]$hautPastille-2),$([math]::Round(([int]$hautPastille-2)/2)) | Fill Color 30,28,38,225 | StrokeWidth $(f 1) | Stroke Color 255,255,255,45
+Shape=Rectangle 1,1,$([int]$largPastille-2),$([int]$hautPastille-2),$([math]::Round(([int]$hautPastille-2)/2)) | Fill Color 255,255,255,12 | StrokeWidth $(f 1) | Stroke Color 255,255,255,100
 
 [Icone]
 Meter=String

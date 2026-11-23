@@ -99,7 +99,7 @@ Skin `MacWidgets\CentreControle`, ouvert par l'icône ⚙ de la barre.
 
 ## Effet verre des panneaux
 
-Windows ne floute pas les fenêtres de Rainmeter, qui ont une transparence pixel par pixel : `SetWindowCompositionAttribute` (flou ou acrylique) donnait un gris uni et peignait les coins. Le verre est donc une image. Juste avant l'ouverture, le moteur photographie ce qu'il y a derrière le panneau (`CopyFromScreen`), le réduit puis l'agrandit (flou), ajoute une teinte légère et arrondit les coins. Il l'enregistre (`verre<horodatage>.png`, nom unique car Rainmeter garde les images en mémoire) et l'affiche en fond (`FondVerre`). Le résultat est proche du dock. Limite : le fond est figé pendant que le panneau est ouvert.
+Windows ne floute pas les fenêtres de Rainmeter, qui ont une transparence pixel par pixel : `SetWindowCompositionAttribute` (flou ou acrylique) donnait un gris uni et peignait les coins. Le verre est donc une image. Juste avant l'ouverture, le moteur photographie ce qu'il y a derrière le panneau (`CopyFromScreen`), le réduit puis l'agrandit (flou), ajoute une teinte légère et arrondit les coins. Il l'enregistre (`verre<horodatage>.png`, nom unique car Rainmeter garde les images en mémoire) et l'affiche en fond (`FondVerre`). Le résultat est proche du dock. Limite : le fond est figé pendant que le panneau est ouvert. Les pastilles de volume et de luminosité ont le même verre (forme de pilule). La photo n'est prise qu'au premier appui, quand la pastille est encore cachée, et jamais quand l'autre pastille occupe déjà la place.
 
 ## Spotlight, calendrier et notifications
 
