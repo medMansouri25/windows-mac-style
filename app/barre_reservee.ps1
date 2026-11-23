@@ -52,6 +52,383 @@ public class EcouteVolume : IAudioEndpointVolumeCallback {
   }
 }
 
+// ============================================================================
+//  Fenetres en verre dessinees par le moteur : Spotlight et Calendrier + notifications
+// ============================================================================
+public static class VerreUI {
+  [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int a, ref int v, int t);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte v, byte s, uint f, UIntPtr e);
+  public static double S = 1.0;   // echelle d'affichage (1.5 = 150 %)
+  public static int N(double v) { return (int)Math.Round(v * S); }
+  // photo floutee + teinte de ce qu'il y a derriere une zone de l'ecran (meme rendu que les panneaux Rainmeter)
+  public static System.Drawing.Bitmap Flou(System.Drawing.Rectangle z) {
+    var ecran = new System.Drawing.Bitmap(z.Width, z.Height);
+    using (var g = System.Drawing.Graphics.FromImage(ecran)) g.CopyFromScreen(z.X, z.Y, 0, 0, z.Size);
+    int pw = Math.Max(2, z.Width / 18), ph = Math.Max(2, z.Height / 18);
+    using (var petit = new System.Drawing.Bitmap(pw, ph)) {
+      using (var g = System.Drawing.Graphics.FromImage(petit)) { g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; g.DrawImage(ecran, 0, 0, pw, ph); }
+      using (var g = System.Drawing.Graphics.FromImage(ecran)) {
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+        g.DrawImage(petit, new System.Drawing.Rectangle(0, 0, z.Width, z.Height));
+        using (var v = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(78, 28, 26, 34))) g.FillRectangle(v, 0, 0, z.Width, z.Height);
+        using (var v = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(12, 255, 255, 255))) g.FillRectangle(v, 0, 0, z.Width, z.Height);
+      }
+    }
+    return ecran;
+  }
+  public static void Arrondir(IntPtr h) { int v = 2; DwmSetWindowAttribute(h, 33, ref v, 4); int c = 0x00787070; DwmSetWindowAttribute(h, 34, ref c, 4); }
+  public static System.Drawing.Drawing2D.GraphicsPath Rond(System.Drawing.RectangleF r, float ray) {
+    var p = new System.Drawing.Drawing2D.GraphicsPath(); float d = ray * 2;
+    p.AddArc(r.X, r.Y, d, d, 180, 90); p.AddArc(r.Right - d, r.Y, d, d, 270, 90); p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90); p.AddArc(r.X, r.Bottom - d, d, d, 90, 90); p.CloseFigure();
+    return p;
+  }
+  public static System.Drawing.Font Police(double px, bool gras) { return new System.Drawing.Font("Segoe UI Variable Text", (float)(px * S), gras ? System.Drawing.FontStyle.Bold : System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel); }
+  public static System.Drawing.Font Icones(double px) { return new System.Drawing.Font("Segoe Fluent Icons", (float)(px * S), System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel); }
+  public static void Texte(System.Drawing.Graphics g, string t, System.Drawing.Font f, System.Drawing.Color c, System.Drawing.RectangleF r, bool droite) {
+    using (var sf = new System.Drawing.StringFormat(System.Drawing.StringFormatFlags.NoWrap)) using (var b = new System.Drawing.SolidBrush(c)) {
+      sf.Trimming = System.Drawing.StringTrimming.EllipsisCharacter; sf.LineAlignment = System.Drawing.StringAlignment.Center;
+      sf.Alignment = droite ? System.Drawing.StringAlignment.Far : System.Drawing.StringAlignment.Near;
+      g.DrawString(t ?? "", f, b, r, sf);
+    }
+  }
+  // icone d'une application (shell:AppsFolder\ID) ou d'un fichier, avec transparence
+  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IShellItemImageFactory { [PreserveSig] int GetImage(System.Drawing.Size taille, int options, out IntPtr hbm); }
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)] static extern void SHCreateItemFromParsingName(string chemin, IntPtr bc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory item);
+  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr o);
+  [StructLayout(LayoutKind.Sequential)] struct BITMAP { public int bmType, bmWidth, bmHeight, bmWidthBytes; public short bmPlanes, bmBitsPixel; public IntPtr bmBits; }
+  [DllImport("gdi32.dll")] static extern int GetObject(IntPtr h, int n, ref BITMAP b);
+  static System.Collections.Generic.Dictionary<string, System.Drawing.Bitmap> cacheIcones = new System.Collections.Generic.Dictionary<string, System.Drawing.Bitmap>();
+  public static System.Drawing.Bitmap Icone(string chemin, int taille) {
+    string cle = chemin + "|" + taille;
+    lock (cacheIcones) { if (cacheIcones.ContainsKey(cle)) return cacheIcones[cle]; }
+    System.Drawing.Bitmap res = null;
+    try {
+      Guid iid = typeof(IShellItemImageFactory).GUID; IShellItemImageFactory f; SHCreateItemFromParsingName(chemin, IntPtr.Zero, ref iid, out f);
+      IntPtr hb; if (f.GetImage(new System.Drawing.Size(taille, taille), 0, out hb) == 0) {
+        var bm = new BITMAP(); GetObject(hb, Marshal.SizeOf(bm), ref bm);
+        if (bm.bmBits != IntPtr.Zero && bm.bmBitsPixel == 32) {
+          using (var tmp = new System.Drawing.Bitmap(bm.bmWidth, bm.bmHeight, bm.bmWidthBytes, System.Drawing.Imaging.PixelFormat.Format32bppPArgb, bm.bmBits)) { res = new System.Drawing.Bitmap(tmp); }
+          res.RotateFlip(System.Drawing.RotateFlipType.RotateNoneFlipY);   // l'image de Windows est stockee a l'envers
+        } else res = System.Drawing.Image.FromHbitmap(hb);
+        DeleteObject(hb);
+      }
+    } catch { }
+    lock (cacheIcones) { cacheIcones[cle] = res; }
+    return res;
+  }
+  // donner le clavier a une fenetre du moteur (Windows le refuse sinon a un programme en arriere-plan)
+  public static void Activer(System.Windows.Forms.Form f) {
+    // la fenetre a le droit de prendre le clavier : ouverte via le raccourci Alt+Espace (voir le moteur)
+    SetForegroundWindow(f.Handle); f.Activate();
+  }
+}
+
+// --- base : fenetre sans bord, toujours devant, absente de la barre des taches et d'Alt+Tab ---
+public class FenetreVerre : System.Windows.Forms.Form {
+  protected System.Drawing.Bitmap fond; public DateTime Fermee = DateTime.MinValue;
+  public FenetreVerre() {
+    FormBorderStyle = System.Windows.Forms.FormBorderStyle.None; ShowInTaskbar = false; TopMost = true; KeyPreview = true;
+    StartPosition = System.Windows.Forms.FormStartPosition.Manual; AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+    SetStyle(System.Windows.Forms.ControlStyles.AllPaintingInWmPaint | System.Windows.Forms.ControlStyles.OptimizedDoubleBuffer | System.Windows.Forms.ControlStyles.UserPaint, true);
+    BackColor = System.Drawing.Color.FromArgb(40, 38, 46);
+  }
+  protected override System.Windows.Forms.CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x80; return p; } }
+  protected override bool ShowWithoutActivation { get { return false; } }
+  // photo du fond prise AVANT l'affichage, sur la hauteur maximale possible
+  protected void PreparerFond(System.Drawing.Rectangle zone) { if (fond != null) fond.Dispose(); fond = VerreUI.Flou(zone); }
+  public void Fermer() { if (Visible) { Hide(); Fermee = DateTime.Now; } }
+  protected virtual bool FermerSiInactive { get { return true; } }
+  protected override void OnDeactivate(EventArgs e) { base.OnDeactivate(e); if (FermerSiInactive) Fermer(); }
+  protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); VerreUI.Arrondir(Handle); }
+  protected void DessinerFond(System.Drawing.Graphics g) {
+    if (fond != null) g.DrawImage(fond, 0, 0);
+    using (var p = new System.Drawing.Pen(System.Drawing.Color.FromArgb(60, 255, 255, 255), 1)) g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+  }
+  protected static System.Drawing.Color Blanc(int a) { return System.Drawing.Color.FromArgb(a, 255, 255, 255); }
+  protected static readonly System.Drawing.Color Bleu = System.Drawing.Color.FromArgb(10, 132, 255);
+}
+
+// ============================== Spotlight ==============================
+public class Spotlight : FenetreVerre {
+  class Resultat { public string Section, Titre, Detail, Icone, Cible, Type; }
+  public Func<string, string> Commande;
+  string texte = ""; bool toutSelect; int choix = 0; int requete = 0;
+  System.Collections.Generic.List<Resultat> res = new System.Collections.Generic.List<Resultat>();
+  System.Collections.Generic.List<Resultat> fichiers = new System.Collections.Generic.List<Resultat>();
+  System.Collections.Generic.List<string[]> apps = new System.Collections.Generic.List<string[]>(); DateTime appsLues = DateTime.MinValue;
+  System.Windows.Forms.Timer curseur = new System.Windows.Forms.Timer(); bool curseurVisible = true;
+  int L { get { return VerreUI.N(680); } }
+  int Haut { get { return VerreUI.N(60); } }
+  int Ligne { get { return VerreUI.N(42); } }
+  int Entete { get { return VerreUI.N(26); } }
+  public Spotlight() { curseur.Interval = 530; curseur.Tick += (s, e) => { curseurVisible = !curseurVisible; Invalidate(new System.Drawing.Rectangle(0, 0, Width, Haut)); }; }
+  public void ChargerApps() {
+    if (Commande == null || (DateTime.Now - appsLues).TotalMinutes < 10 && apps.Count > 0) return;
+    string t = ""; try { t = Commande("apps"); } catch { }
+    if (string.IsNullOrEmpty(t)) return;
+    var l = new System.Collections.Generic.List<string[]>();
+    foreach (var ligne in t.Split('\n')) { var p = ligne.TrimEnd('\r').Split('\t'); if (p.Length == 2 && p[0].Length > 0) l.Add(p); }
+    apps = l; appsLues = DateTime.Now;
+  }
+  public void Ouvrir() {
+    if (Visible) { Fermer(); return; }
+    if ((DateTime.Now - Fermee).TotalMilliseconds < 350) return;   // le clic sur la loupe vient de la fermer
+    var ecran = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+    int x = ecran.X + (ecran.Width - L) / 2, y = ecran.Y + (int)(ecran.Height * 0.06);
+    PreparerFond(new System.Drawing.Rectangle(x, y, L, Haut + VerreUI.N(12) + 10 * Ligne + 4 * Entete));
+    ChargerApps();
+    texte = ""; toutSelect = false; choix = 0; res.Clear(); fichiers.Clear(); sourisAvant = System.Windows.Forms.Cursor.Position;
+    Bounds = new System.Drawing.Rectangle(x, y, L, Haut);
+    Show(); VerreUI.Activer(this); curseur.Start(); Invalidate();
+  }
+  protected override void OnDeactivate(EventArgs e) { curseur.Stop(); base.OnDeactivate(e); }
+  // --- clavier ---
+  protected override bool ProcessCmdKey(ref System.Windows.Forms.Message m, System.Windows.Forms.Keys k) {
+    if (k == System.Windows.Forms.Keys.Escape) { Fermer(); return true; }
+    if (k == System.Windows.Forms.Keys.Down) { if (res.Count > 0) choix = (choix + 1) % res.Count; Invalidate(); return true; }
+    if (k == System.Windows.Forms.Keys.Up) { if (res.Count > 0) choix = (choix - 1 + res.Count) % res.Count; Invalidate(); return true; }
+    if (k == System.Windows.Forms.Keys.Enter) { Lancer(choix); return true; }
+    if (k == (System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)) { toutSelect = true; Invalidate(); return true; }
+    if (k == (System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.V)) { try { Changer((toutSelect ? "" : texte) + System.Windows.Forms.Clipboard.GetText().Replace("\r", " ").Replace("\n", " ")); } catch { } return true; }
+    if (k == System.Windows.Forms.Keys.Back) { Changer(toutSelect ? "" : (texte.Length > 0 ? texte.Substring(0, texte.Length - 1) : "")); return true; }
+    if (k == (System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Back)) { var t = texte.TrimEnd(); int i = t.LastIndexOf(' '); Changer(toutSelect || i < 0 ? "" : t.Substring(0, i + 1)); return true; }
+    return base.ProcessCmdKey(ref m, k);
+  }
+  protected override void OnKeyPress(System.Windows.Forms.KeyPressEventArgs e) { if (e.KeyChar >= 32) { Changer((toutSelect ? "" : texte) + e.KeyChar); e.Handled = true; } }
+  void Changer(string t) { texte = t; toutSelect = false; curseurVisible = true; choix = 0; Chercher(); }
+  // --- recherche : calcul, applications (tout de suite), fichiers (index Windows, en arriere-plan) ---
+  void Chercher() {
+    res.Clear(); string q = texte.Trim();
+    if (q.Length > 0) {
+      string calcul = Calculer(q);
+      if (calcul != null) res.Add(new Resultat { Section = "Calcul", Titre = "= " + calcul, Detail = "Entrée pour copier le résultat", Cible = calcul, Type = "calcul" });
+      string ql = q.ToLowerInvariant(); var trouves = new System.Collections.Generic.List<Tuple<int, string[]>>();
+      foreach (var a in apps) {
+        string n = a[0].ToLowerInvariant(); int score = n == ql ? 100 : n.StartsWith(ql) ? 80 : (" " + n).Contains(" " + ql) ? 60 : n.Contains(ql) ? 40 : 0;
+        if (score > 0) trouves.Add(Tuple.Create(score - Math.Min(n.Length, 30) / 10, a));
+      }
+      trouves.Sort((x, y) => y.Item1.CompareTo(x.Item1));
+      for (int i = 0; i < trouves.Count && i < 5; i++) res.Add(new Resultat { Section = "Applications", Titre = trouves[i].Item2[0], Detail = "Application", Icone = @"shell:AppsFolder\" + trouves[i].Item2[1], Cible = trouves[i].Item2[1], Type = "app" });
+      foreach (var f in fichiers) res.Add(f);
+      res.Add(new Resultat { Section = "Web", Titre = "Rechercher « " + q + " » sur le web", Detail = "Google", Cible = q, Type = "web" });
+      int num = ++requete; string terme = q;
+      System.Threading.Tasks.Task.Run(() => {
+        System.Threading.Thread.Sleep(150); if (num != requete) return;
+        var l = ChercherFichiers(terme);
+        try { BeginInvoke(new Action(() => { if (num != requete) return; fichiers = l; int c = choix; Chercher2(); choix = Math.Min(c, Math.Max(0, res.Count - 1)); Ajuster(); })); } catch { }
+      });
+    } else { fichiers.Clear(); requete++; }
+    Ajuster();
+  }
+  void Chercher2() {   // remet les fichiers a leur place (avant le web)
+    var w = res.FindAll(r => r.Type == "web"); res.RemoveAll(r => r.Type == "web" || r.Type == "fichier"); res.AddRange(fichiers); res.AddRange(w);
+  }
+  static System.Collections.Generic.List<Resultat> ChercherFichiers(string q) {
+    var l = new System.Collections.Generic.List<Resultat>();
+    try {
+      using (var cn = new System.Data.OleDb.OleDbConnection("Provider=Search.CollatorDSO;Extended Properties=\"Application=Windows\"")) {
+        cn.Open(); var cmd = cn.CreateCommand();
+        string t = q.Replace("'", "''").Replace("\"", "");
+        cmd.CommandText = "SELECT TOP 12 System.ItemNameDisplay, System.ItemUrl, System.ItemFolderPathDisplay FROM SystemIndex WHERE CONTAINS(System.ItemNameDisplay, '\"" + t + "*\"') AND SCOPE='file:' AND System.FileExtension <> '.lnk' AND System.ItemType <> 'Directory' ORDER BY System.DateModified DESC";
+        using (var r = cmd.ExecuteReader()) while (r.Read()) {
+          string url = r[1] as string; if (string.IsNullOrEmpty(url) || !url.StartsWith("file:")) continue;
+          string chemin = Uri.UnescapeDataString(url.Substring(5)).Replace('/', '\\');   // vrai chemin (ItemPathDisplay est traduit : « Utilisateurs »)
+          if (chemin.IndexOf(@"\AppData\", StringComparison.OrdinalIgnoreCase) >= 0 || chemin.IndexOf(@"\ProgramData\", StringComparison.OrdinalIgnoreCase) >= 0 || !System.IO.File.Exists(chemin)) continue;   // fichiers internes des applications
+          if (l.Count >= 4) break;
+          l.Add(new Resultat { Section = "Fichiers", Titre = r[0] as string, Detail = r[2] as string, Icone = chemin, Cible = chemin, Type = "fichier" });
+        }
+      }
+    } catch { }
+    return l;
+  }
+  static string Calculer(string q) {
+    string s = q.ToLowerInvariant().Replace(" ", "").Replace(",", ".").Replace("×", "*").Replace("x", "*").Replace("÷", "/").Replace(":", "/");
+    var pct = System.Text.RegularExpressions.Regex.Match(s, @"^([0-9.]+)%(de|of|\*)([0-9.]+)$");
+    if (pct.Success) s = "(" + pct.Groups[1].Value + "/100)*" + pct.Groups[3].Value;
+    if (!System.Text.RegularExpressions.Regex.IsMatch(s, @"^[0-9.+\-*/()]+$") || !System.Text.RegularExpressions.Regex.IsMatch(s, @"[0-9]") || !System.Text.RegularExpressions.Regex.IsMatch(s, @"[+\-*/]") && !pct.Success) return null;
+    try {
+      var v = Convert.ToDouble(new System.Data.DataTable().Compute(s, ""), System.Globalization.CultureInfo.InvariantCulture);
+      if (double.IsInfinity(v) || double.IsNaN(v)) return null;
+      return Math.Round(v, 6).ToString("0.######", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
+    } catch { return null; }
+  }
+  void Lancer(int i) {
+    if (i < 0 || i >= res.Count) return; var r = res[i];
+    try {
+      if (r.Type == "app") System.Diagnostics.Process.Start("explorer.exe", @"shell:AppsFolder\" + r.Cible);
+      else if (r.Type == "fichier") System.Diagnostics.Process.Start(r.Cible);
+      else if (r.Type == "web") System.Diagnostics.Process.Start("https://www.google.com/search?q=" + Uri.EscapeDataString(r.Cible));
+      else if (r.Type == "calcul") System.Windows.Forms.Clipboard.SetText(r.Cible);
+    } catch { }
+    Fermer();
+  }
+  void Ajuster() {
+    int h = Haut; string sec = null;
+    if (res.Count > 0) { h += VerreUI.N(6); foreach (var r in res) { if (r.Section != sec) { h += Entete; sec = r.Section; } h += Ligne; } h += VerreUI.N(8); }
+    if (Height != h) Height = h;
+    Invalidate();
+  }
+  protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e) { int i = LigneSous(e.Y); if (i >= 0) Lancer(i); }
+  System.Drawing.Point sourisAvant;   // la souris ne choisit une ligne que si elle bouge vraiment (pas si la fenetre apparait dessous)
+  protected override void OnMouseMove(System.Windows.Forms.MouseEventArgs e) { var s = System.Windows.Forms.Cursor.Position; if (s == sourisAvant) return; sourisAvant = s; int i = LigneSous(e.Y); if (i >= 0 && i != choix) { choix = i; Invalidate(); } }
+  int LigneSous(int y) {
+    int yy = Haut + VerreUI.N(6); string sec = null;
+    for (int i = 0; i < res.Count; i++) { if (res[i].Section != sec) { yy += Entete; sec = res[i].Section; } if (y >= yy && y < yy + Ligne) return i; yy += Ligne; }
+    return -1;
+  }
+  protected override void OnPaint(System.Windows.Forms.PaintEventArgs e) {
+    var g = e.Graphics; DessinerFond(g);
+    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+    using (var ic = VerreUI.Icones(20)) VerreUI.Texte(g, "", ic, Blanc(170), new System.Drawing.RectangleF(VerreUI.N(20), 0, VerreUI.N(30), Haut), false);
+    using (var f = VerreUI.Police(22, false)) {
+      var zone = new System.Drawing.RectangleF(VerreUI.N(58), 0, L - VerreUI.N(80), Haut);
+      if (texte.Length == 0) VerreUI.Texte(g, "Recherche Spotlight", f, Blanc(110), zone, false);
+      else {
+        if (toutSelect) { var t = g.MeasureString(texte, f); using (var b = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(120, 10, 132, 255))) g.FillRectangle(b, zone.X + 2, (Haut - t.Height) / 2, t.Width - 4, t.Height); }
+        VerreUI.Texte(g, texte, f, Blanc(255), zone, false);
+      }
+      if (curseurVisible) {
+        float w = texte.Length == 0 ? 0 : g.MeasureString(texte + "|", f).Width - g.MeasureString("|", f).Width;
+        using (var p = new System.Drawing.Pen(Blanc(230), VerreUI.N(1.5))) g.DrawLine(p, zone.X + w + VerreUI.N(2), Haut / 2 - VerreUI.N(13), zone.X + w + VerreUI.N(2), Haut / 2 + VerreUI.N(13));
+      }
+    }
+    if (res.Count == 0) return;
+    using (var p = new System.Drawing.Pen(Blanc(40), 1)) g.DrawLine(p, VerreUI.N(14), Haut, L - VerreUI.N(14), Haut);
+    int y = Haut + VerreUI.N(6); string sec = null;
+    using (var fSec = VerreUI.Police(11.5, true)) using (var fT = VerreUI.Police(14.5, false)) using (var fD = VerreUI.Police(12, false))
+    for (int i = 0; i < res.Count; i++) {
+      var r = res[i];
+      if (r.Section != sec) { sec = r.Section; VerreUI.Texte(g, sec.ToUpperInvariant(), fSec, Blanc(130), new System.Drawing.RectangleF(VerreUI.N(22), y, L - VerreUI.N(44), Entete), false); y += Entete; }
+      if (i == choix) using (var b = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(225, 10, 132, 255))) using (var pth = VerreUI.Rond(new System.Drawing.RectangleF(VerreUI.N(10), y, L - VerreUI.N(20), Ligne), VerreUI.N(8))) g.FillPath(b, pth);
+      var img = r.Icone != null ? VerreUI.Icone(r.Icone, VerreUI.N(28)) : null;
+      if (img != null) g.DrawImage(img, VerreUI.N(22), y + (Ligne - VerreUI.N(28)) / 2, VerreUI.N(28), VerreUI.N(28));
+      else using (var ic = VerreUI.Icones(18)) VerreUI.Texte(g, r.Type == "calcul" ? "" : "", ic, Blanc(220), new System.Drawing.RectangleF(VerreUI.N(22), y, VerreUI.N(28), Ligne), false);
+      float xt = VerreUI.N(62), lt = L - VerreUI.N(84);
+      var tm = g.MeasureString(r.Titre, fT); float lTitre = Math.Min(tm.Width, lt * 0.62f);
+      VerreUI.Texte(g, r.Titre, fT, Blanc(255), new System.Drawing.RectangleF(xt, y, lTitre + 4, Ligne), false);
+      VerreUI.Texte(g, r.Detail, fD, Blanc(i == choix ? 210 : 140), new System.Drawing.RectangleF(xt + lTitre + VerreUI.N(10), y, lt - lTitre - VerreUI.N(10), Ligne), false);
+      y += Ligne;
+    }
+  }
+}
+
+// ======================= Calendrier + notifications =======================
+public class Agenda : FenetreVerre {
+  class Notif { public string Id, App, Titre, Corps, Aumid; public DateTime Date; }
+  public Func<string, string> Commande; public Action<string> Raccourci;
+  protected override bool FermerSiInactive { get { return false; } }   // ferme par le moteur (clic a cote, Echap)
+  protected override bool ShowWithoutActivation { get { return true; } }
+  DateTime mois; System.Collections.Generic.List<Notif> notifs = new System.Collections.Generic.List<Notif>();
+  System.Collections.Generic.List<Tuple<System.Drawing.RectangleF, string>> zones = new System.Collections.Generic.List<Tuple<System.Drawing.RectangleF, string>>();
+  static readonly System.Globalization.CultureInfo fr = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+  int L { get { return VerreUI.N(340); } }
+  const int MaxNotifs = 5;
+  public void Ouvrir(int droite, int haut) {
+    if (Visible) { Fermer(); return; }
+    if ((DateTime.Now - Fermee).TotalMilliseconds < 350) return;
+    mois = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    Lire();
+    int hMax = VerreUI.N(330) + MaxNotifs * VerreUI.N(74) + VerreUI.N(110);
+    PreparerFond(new System.Drawing.Rectangle(droite - L, haut, L, hMax));
+    Bounds = new System.Drawing.Rectangle(droite - L, haut, L, Hauteur());
+    Show(); Invalidate();
+  }
+  void Lire() {
+    notifs.Clear(); if (Commande == null) return;
+    string t = ""; try { t = Commande("notifs"); } catch { }
+    foreach (var ligne in (t ?? "").Split('\n')) {
+      var p = ligne.TrimEnd('\r').Split('\t'); if (p.Length < 6) continue;
+      DateTime d; DateTime.TryParse(p[4], null, System.Globalization.DateTimeStyles.RoundtripKind, out d);
+      notifs.Add(new Notif { Id = p[0], App = p[1], Titre = p[2], Corps = p[3], Date = d.ToLocalTime(), Aumid = p[5] });
+    }
+    notifs.Sort((a, b) => b.Date.CompareTo(a.Date));
+  }
+  int Hauteur() { int n = Math.Min(notifs.Count, MaxNotifs); return VerreUI.N(318) + VerreUI.N(44) + (n == 0 ? VerreUI.N(44) : n * VerreUI.N(74)) + (notifs.Count > MaxNotifs ? VerreUI.N(26) : 0) + VerreUI.N(46); }
+  string Quand(DateTime d) {
+    var m = (DateTime.Now - d).TotalMinutes;
+    if (m < 1) return "maintenant"; if (m < 60) return "il y a " + (int)m + " min";
+    if (d.Date == DateTime.Today) return d.ToString("HH:mm"); if (d.Date == DateTime.Today.AddDays(-1)) return "hier";
+    return d.ToString("d MMM", fr);
+  }
+  protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e) {
+    foreach (var z in zones) if (z.Item1.Contains(e.Location)) {
+      string a = z.Item2;
+      if (a == "prec") mois = mois.AddMonths(-1); else if (a == "suiv") mois = mois.AddMonths(1);
+      else if (a == "auj") mois = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+      else if (a == "effacer") { try { Commande("notif-effacer"); } catch { } notifs.Clear(); Height = Hauteur(); }
+      else if (a == "windows") { Fermer(); if (Raccourci != null) Raccourci("N"); return; }
+      else if (a.StartsWith("n:")) {
+        var n = notifs.Find(x => x.Id == a.Substring(2));
+        if (n != null) { try { if (!string.IsNullOrEmpty(n.Aumid)) System.Diagnostics.Process.Start("explorer.exe", @"shell:AppsFolder\" + n.Aumid); Commande("notif-suppr:" + n.Id); } catch { } }
+        Fermer(); return;
+      }
+      Invalidate(); return;
+    }
+  }
+  protected override void OnMouseMove(System.Windows.Forms.MouseEventArgs e) {
+    bool main = false; foreach (var z in zones) if (z.Item1.Contains(e.Location)) main = true;
+    Cursor = main ? System.Windows.Forms.Cursors.Hand : System.Windows.Forms.Cursors.Default;
+  }
+  protected override bool ProcessCmdKey(ref System.Windows.Forms.Message m, System.Windows.Forms.Keys k) {
+    if (k == System.Windows.Forms.Keys.Escape) { Fermer(); return true; }
+    return base.ProcessCmdKey(ref m, k);
+  }
+  protected override void OnPaint(System.Windows.Forms.PaintEventArgs e) {
+    var g = e.Graphics; DessinerFond(g); zones.Clear();
+    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+    float m = VerreUI.N(18), lu = L - 2 * m;
+    // --- calendrier ---
+    using (var fM = VerreUI.Police(16, true)) using (var ic = VerreUI.Icones(13)) using (var fJ = VerreUI.Police(11.5, true)) using (var fD = VerreUI.Police(13.5, false)) using (var fDg = VerreUI.Police(13.5, true)) {
+      string titre = mois.ToString("MMMM yyyy", fr); titre = char.ToUpper(titre[0]) + titre.Substring(1);
+      var rt = new System.Drawing.RectangleF(m, VerreUI.N(14), lu - VerreUI.N(70), VerreUI.N(30)); VerreUI.Texte(g, titre, fM, Blanc(255), rt, false); zones.Add(Tuple.Create(rt, "auj"));
+      var rp = new System.Drawing.RectangleF(L - m - VerreUI.N(64), VerreUI.N(14), VerreUI.N(30), VerreUI.N(30)); var rs = new System.Drawing.RectangleF(L - m - VerreUI.N(30), VerreUI.N(14), VerreUI.N(30), VerreUI.N(30));
+      VerreUI.Texte(g, "", ic, Blanc(220), rp, false); VerreUI.Texte(g, "", ic, Blanc(220), rs, false); zones.Add(Tuple.Create(rp, "prec")); zones.Add(Tuple.Create(rs, "suiv"));
+      float cw = lu / 7f, y0 = VerreUI.N(52);
+      string[] jours = { "L", "M", "M", "J", "V", "S", "D" };
+      using (var sf = new System.Drawing.StringFormat { Alignment = System.Drawing.StringAlignment.Center, LineAlignment = System.Drawing.StringAlignment.Center })
+      using (var bg = new System.Drawing.SolidBrush(Blanc(130))) {
+        for (int i = 0; i < 7; i++) g.DrawString(jours[i], fJ, bg, new System.Drawing.RectangleF(m + i * cw, y0, cw, VerreUI.N(24)), sf);
+        int decal = ((int)mois.DayOfWeek + 6) % 7; var debut = mois.AddDays(-decal); float ch = VerreUI.N(38);
+        for (int k = 0; k < 42; k++) {
+          var d = debut.AddDays(k); var r = new System.Drawing.RectangleF(m + (k % 7) * cw, y0 + VerreUI.N(26) + (k / 7) * ch, cw, ch);
+          bool auj = d == DateTime.Today, dansMois = d.Month == mois.Month;
+          if (auj) using (var b = new System.Drawing.SolidBrush(Bleu)) { float s = VerreUI.N(32); g.FillEllipse(b, r.X + (r.Width - s) / 2, r.Y + (r.Height - s) / 2, s, s); }
+          using (var b = new System.Drawing.SolidBrush(auj ? Blanc(255) : dansMois ? Blanc(k % 7 >= 5 ? 175 : 235) : Blanc(70))) g.DrawString(d.Day.ToString(), auj ? fDg : fD, b, r, sf);
+        }
+      }
+    }
+    // --- notifications ---
+    float y = VerreUI.N(318);
+    using (var p = new System.Drawing.Pen(Blanc(40), 1)) g.DrawLine(p, m, y, L - m, y);
+    using (var fH = VerreUI.Police(14, true)) using (var fL = VerreUI.Police(12.5, false)) using (var fA = VerreUI.Police(11.5, false)) using (var fT = VerreUI.Police(13, true)) using (var fC = VerreUI.Police(12.5, false)) {
+      VerreUI.Texte(g, "Notifications", fH, Blanc(255), new System.Drawing.RectangleF(m, y + VerreUI.N(6), lu, VerreUI.N(32)), false);
+      if (notifs.Count > 0) { var re = new System.Drawing.RectangleF(L - m - VerreUI.N(110), y + VerreUI.N(6), VerreUI.N(110), VerreUI.N(32)); VerreUI.Texte(g, "Tout effacer", fL, Blanc(190), re, true); zones.Add(Tuple.Create(re, "effacer")); }
+      y += VerreUI.N(44);
+      if (notifs.Count == 0) { VerreUI.Texte(g, "Aucune notification", fL, Blanc(140), new System.Drawing.RectangleF(m, y, lu, VerreUI.N(36)), false); y += VerreUI.N(44); }
+      for (int i = 0; i < notifs.Count && i < MaxNotifs; i++) {
+        var n = notifs[i]; var carte = new System.Drawing.RectangleF(m, y, lu, VerreUI.N(66));
+        using (var b = new System.Drawing.SolidBrush(Blanc(26))) using (var pth = VerreUI.Rond(carte, VerreUI.N(12))) g.FillPath(b, pth);
+        using (var pn = new System.Drawing.Pen(Blanc(30), 1)) using (var pth = VerreUI.Rond(carte, VerreUI.N(12))) g.DrawPath(pn, pth);
+        var img = string.IsNullOrEmpty(n.Aumid) ? null : VerreUI.Icone(@"shell:AppsFolder\" + n.Aumid, VerreUI.N(32));
+        if (img != null) g.DrawImage(img, carte.X + VerreUI.N(12), carte.Y + VerreUI.N(17), VerreUI.N(32), VerreUI.N(32));
+        float xt = carte.X + VerreUI.N(54), lt = carte.Right - xt - VerreUI.N(12);
+        VerreUI.Texte(g, n.App, fA, Blanc(150), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(5), lt - VerreUI.N(80), VerreUI.N(18)), false);
+        VerreUI.Texte(g, Quand(n.Date), fA, Blanc(150), new System.Drawing.RectangleF(carte.Right - VerreUI.N(92), carte.Y + VerreUI.N(5), VerreUI.N(80), VerreUI.N(18)), true);
+        VerreUI.Texte(g, n.Titre, fT, Blanc(255), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(23), lt, VerreUI.N(20)), false);
+        VerreUI.Texte(g, n.Corps, fC, Blanc(185), new System.Drawing.RectangleF(xt, carte.Y + VerreUI.N(42), lt, VerreUI.N(20)), false);
+        zones.Add(Tuple.Create(carte, "n:" + n.Id));
+        y += VerreUI.N(74);
+      }
+      if (notifs.Count > MaxNotifs) { VerreUI.Texte(g, "+" + (notifs.Count - MaxNotifs) + " autres notifications", fA, Blanc(150), new System.Drawing.RectangleF(m, y - VerreUI.N(4), lu, VerreUI.N(26)), false); y += VerreUI.N(26); }
+      using (var p = new System.Drawing.Pen(Blanc(40), 1)) g.DrawLine(p, m, y + VerreUI.N(2), L - m, y + VerreUI.N(2));
+      var rw = new System.Drawing.RectangleF(m, y + VerreUI.N(6), lu, VerreUI.N(34));
+      VerreUI.Texte(g, "Centre de notifications Windows…", fL, Blanc(230), rw, false); zones.Add(Tuple.Create(rw, "windows"));
+    }
+  }
+}
+
 public class BarreReservee : Form {
   public static Func<string> LireWifi;   // fourni par PowerShell (API reseau de Windows)
   string dernierWifi = "";
@@ -260,7 +637,8 @@ public class BarreReservee : Form {
     EnvoyerBang("[!SetVariable FondVerre \"" + img + "\" " + cfg + "][!UpdateMeter FondVerre " + cfg + "][!Redraw " + cfg + "][!Show " + cfg + "]");
   }
   void SurveillerPanneau(object o, EventArgs e) {
-    bool chercher = recherche++ % 20 == 0;     // cherche les fenetres au plus toutes les 2,4 s
+    bool chercher = recherche++ % 20 == 0;
+    if (recherche % 4 == 0) NomApplication();   // nom de l'application active, toutes les 0,5 s     // cherche les fenetres au plus toutes les 2,4 s
     bool gauche = (GetAsyncKeyState(0x01) & 0x8000) != 0;
     bool clic = gauche || (GetAsyncKeyState(0x02) & 0x8000) != 0;
     bool echap = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
@@ -283,6 +661,10 @@ public class BarreReservee : Form {
         if (glisse != 0) AppliquerCurseur(glisse, pt, r);
         if (++toursCC % 10 == 0) Executer("musique");   // musique en cours relue toutes les 1,2 s, seulement panneau ouvert
       }
+    }
+    if (agenda != null && agenda.Visible && ((clic && !clicAvant) || echap)) {
+      bool surDate = pt.y < HauteurPhysique() && pt.x > GetSystemMetrics(0) - VerreUI.N(200);
+      if (echap || (!agenda.Bounds.Contains(pt.x, pt.y) && !surDate)) agenda.Fermer();
     }
     clicAvant = clic;
     minuteurPanneau.Interval = glisse != 0 ? 30 : 120;   // plus fluide pendant qu'on fait glisser un curseur
@@ -325,14 +707,69 @@ public class BarreReservee : Form {
     Executer("etat"); Executer("musique-force"); toursCC = 0;
   }
   // commandes envoyees par le panneau (WindowMessagePlugin -> message WM_APP+1)
-  void ActionCC(int c) {
+  static void Journal(string s) { try { System.IO.File.AppendAllText(Dossier + "moteur_erreurs.log", DateTime.Now.ToString("dd/MM HH:mm:ss") + "  " + s + Environment.NewLine); } catch { } }
+  void ActionCC(int c) { try { ActionCC2(c); } catch (Exception ex) { Journal("commande " + c + " : " + ex.ToString()); } }
+  void ActionCC2(int c) {
     if (c == 1) Touche(0xB3); else if (c == 2) Touche(0xB0); else if (c == 3) Touche(0xB1);       // lecture/pause, suivant, precedent
     else if (c == 4) Executer("wifi"); else if (c == 5) Executer("bluetooth");
-    else if (c == 10) Basculer(pBat); else if (c == 11) Basculer(pCC);                          // icones de la barre
+    else if (c == 10) { spot.Fermer(); agenda.Fermer(); Basculer(pBat); } else if (c == 11) { spot.Fermer(); agenda.Fermer(); Basculer(pCC); }
+    else if (c == 12) { if (raccourciOk) { keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x20, 0, 0, UIntPtr.Zero); keybd_event(0x20, 0, 2, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); } else OuvrirSpotlight(); }   // loupe : on passe par le raccourci
+    else if (c == 13) OuvrirAgenda();
+    else if (c == 14) { spot.Fermer(); agenda.Fermer(); FermerPanneauxRainmeter(); keybd_event(0x5B, 0, 1, UIntPtr.Zero); keybd_event(0x5B, 0, 3, UIntPtr.Zero); }   // logo : touche Windows (menu Demarrer)                          // icones de la barre
     else if (c == 6) { try { bool mu; Guid g = Guid.Empty; volPeriph.GetMute(out mu); volPeriph.SetMute(!mu, ref g); } catch { } }
     if (c <= 3) toursCC = 6;   // musique relue dans 0,5 s
   }
   void Touche(byte v) { keybd_event(v, 0, 1, UIntPtr.Zero); keybd_event(v, 0, 3, UIntPtr.Zero); }
+
+  // --- Spotlight (Alt+Espace ou loupe) et calendrier + notifications (clic sur la date) ---
+  [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
+  Spotlight spot; Agenda agenda; bool raccourciOk;
+  void CreerFenetres() {
+    VerreUI.S = GetDeviceCaps(GetDC(IntPtr.Zero), 88) / 96.0;
+    spot = new Spotlight(); spot.Commande = c => Commande != null ? Commande(c) : "";
+    agenda = new Agenda(); agenda.Commande = c => Commande != null ? Commande(c) : "";
+    agenda.Raccourci = t => { try { System.Diagnostics.Process.Start("wscript.exe", "\"" + Dossier + "lancer_invisible.vbs\" \"" + Dossier + "raccourci.ps1\" " + t); } catch { } };
+    var prechargement = new System.Windows.Forms.Timer(); prechargement.Interval = 15000;
+    prechargement.Tick += (s, e) => { prechargement.Stop(); spot.ChargerApps(); };   // liste des applications prete avant la premiere recherche
+    prechargement.Start();
+  }
+  void FermerPanneauxRainmeter() { foreach (var a in new[] { pBat, pCC }) if (a.H != IntPtr.Zero && IsWindowVisible(a.H)) EnvoyerBang("[!Hide \"MacWidgets\\" + a.Nom + "\"]"); }
+  void OuvrirSpotlight() { FermerPanneauxRainmeter(); agenda.Fermer(); spot.Ouvrir(); }
+  void OuvrirAgenda() { FermerPanneauxRainmeter(); spot.Fermer(); agenda.Ouvrir(GetSystemMetrics(0) - VerreUI.N(8), HauteurPhysique() + VerreUI.N(6)); }
+
+  // --- nom de l'application au premier plan, a la place de « Bureau » (comme le menu en gras du Mac) ---
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr h, out int p);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr p, EnumCB cb, IntPtr l);
+  string nomApp = ""; IntPtr fenAvant = IntPtr.Zero;
+  void NomApplication() {
+    IntPtr h = GetForegroundWindow(); if (h == IntPtr.Zero || h == fenAvant) return; fenAvant = h;
+    string nom = null;
+    try {
+      var cl = new System.Text.StringBuilder(256); GetClassName(h, cl, 256); string c = cl.ToString();
+      int pid; GetWindowThreadProcessId(h, out pid); var p = System.Diagnostics.Process.GetProcessById(pid); string pn = p.ProcessName.ToLower();
+      if (c == "Progman" || c == "WorkerW" || c == "Shell_TrayWnd" || c == "Shell_SecondaryTrayWnd") nom = "Bureau";
+      else if (pn == "rainmeter" || pid == System.Diagnostics.Process.GetCurrentProcess().Id || pn == "searchhost" || pn == "startmenuexperiencehost" || pn == "shellexperiencehost" || pn == "shellhost" || pn == "lockapp") return;   // nos panneaux, menus de Windows : on garde le nom
+      else {
+        if (pn == "applicationframehost") {   // applications du Microsoft Store : le vrai programme est dans une fenetre enfant
+          int enfant = 0; EnumChildWindows(h, (e, l) => { int q; GetWindowThreadProcessId(e, out q); if (q != pid) { enfant = q; return false; } return true; }, IntPtr.Zero);
+          if (enfant != 0) { p = System.Diagnostics.Process.GetProcessById(enfant); pn = p.ProcessName.ToLower(); }
+        }
+        if (pn == "explorer") nom = "Explorateur";
+        else {
+          try {
+            var v = p.MainModule.FileVersionInfo; string d = (v.FileDescription ?? "").Trim(), pr = (v.ProductName ?? "").Trim();
+            nom = (pr.Length > 0 && !pr.Contains("Windows") && (d.Length == 0 || pr.Length <= d.Length)) ? pr : d;
+          } catch { }
+          if (string.IsNullOrEmpty(nom)) nom = p.ProcessName;
+        }
+      }
+    } catch { return; }
+    nom = nom.Replace("\"", "").Replace("®", "").Replace("™", "").Trim(); if (nom.Length > 28) nom = nom.Substring(0, 28).Trim();
+    if (nom.Length == 0 || nom == nomApp) return; nomApp = nom;
+    EnvoyerBang("[!SetVariable NomApp \"" + nom + "\" \"MacWidgets\\BarreMenus\"][!UpdateMeter * \"MacWidgets\\BarreMenus\"][!Redraw \"MacWidgets\\BarreMenus\"]");
+  }
 
   // --- Mode eco choisi dans le panneau : auto (selon le chargeur), on (force), off (coupe) ---
   string ecoForce = "auto";
@@ -374,10 +811,11 @@ public class BarreReservee : Form {
     EcouterLuminosite();
     EcouterVolume();
     LireZone();
+    CreerFenetres();
     minuteurPanneau = new System.Windows.Forms.Timer(); minuteurPanneau.Interval = 120; minuteurPanneau.Tick += SurveillerPanneau; minuteurPanneau.Start();
   }
   protected override CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x80 | 0x08000000; return p; } }
-  protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Inscrire(); }
+  protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Inscrire(); raccourciOk = RegisterHotKey(Handle, 1, 0x4001, 0x20); }   // Alt+Espace = Spotlight
   protected override void SetVisibleCore(bool v) { base.SetVisibleCore(false); if (!IsHandleCreated) CreateHandle(); }
   int HauteurPhysique() { int dpi = GetDeviceCaps(GetDC(IntPtr.Zero), 88); return (int)Math.Round(hauteurLogique * dpi / 96.0); }
   void Inscrire() {
@@ -396,6 +834,7 @@ public class BarreReservee : Form {
   protected override void WndProc(ref Message m) {
     if (m.Msg == (int)taskbarCreated) { inscrit = false; Inscrire(); }      // Explorateur relance
     else if (m.Msg == (int)cb && (int)m.WParam == 1) { Placer(); }
+    else if (m.Msg == 0x0312 && (int)m.WParam == 1) { try { OuvrirSpotlight(); } catch (Exception ex) { Journal("spotlight : " + ex); } }   // raccourci Alt+Espace (Windows autorise la prise du clavier)
     else if (m.Msg == 0x8001) { int c = (int)m.WParam; BeginInvoke(new Action(() => ActionCC(c))); }   // commande du centre de controle
     else if (m.Msg == 0x007E) { Placer(); }                                 // changement de resolution
     base.WndProc(ref m);
@@ -413,7 +852,7 @@ public class BarreReservee : Form {
 }
 '@
 $code = $code.Replace('__RAINMETER__', $rainmeterExe).Replace('__DOSSIER__', $dossier.TrimEnd('\'))
-Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing, System.Management -TypeDefinition $code
+Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing, System.Management, System.Data, System.Xml -TypeDefinition $code
 # Wi-Fi : on lit le signal comme la barre des taches de Windows (sans demander la localisation)
 $null = [Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType = WindowsRuntime]
 [BarreReservee]::LireWifi = [Func[string]] {
@@ -481,6 +920,22 @@ function Musique([bool]$force) {
   if (-not $titre) { $titre = 'Lecture en cours' }
   "[!SetVariable MusTitre `"$titre`" $c][!SetVariable MusArtiste `"$artiste`" $c][!SetVariable MusEtat $joue $c]$image[!UpdateMeasure MesureMus $c][!UpdateMeterGroup Musique $c][!Redraw $c]"
 }
+# Spotlight (liste des applications) et notifications (API WinRT UserNotificationListener, sans droits administrateur)
+$null = [Windows.UI.Notifications.Management.UserNotificationListener, Windows.UI.Notifications, ContentType = WindowsRuntime]
+function Notifs {
+  $l = [Windows.UI.Notifications.Management.UserNotificationListener]::Current
+  $liste = Attendre ($l.GetNotificationsAsync([Windows.UI.Notifications.NotificationKinds]::Toast)) ([System.Collections.Generic.IReadOnlyList[Windows.UI.Notifications.UserNotification]])
+  $lignes = foreach ($n in @($liste)) {
+    try {
+      $b = $n.Notification.Visual.GetBinding([Windows.UI.Notifications.KnownNotificationBindings]::ToastGeneric)
+      $t = @($b.GetTextElements() | ForEach-Object { ($_.Text -replace "[\t\r\n]+", ' ').Trim() } | Where-Object { $_ })
+      $app = ''; $aumid = ''; try { $app = $n.AppInfo.DisplayInfo.DisplayName; $aumid = $n.AppInfo.AppUserModelId } catch { }
+      $titre = if ($t.Count) { $t[0] } else { $app }
+      "$($n.Id)`t$app`t$titre`t$(($t | Select-Object -Skip 1) -join ' · ')`t$($n.CreationTime.ToString('o'))`t$aumid"
+    } catch { }
+  }
+  $lignes -join "`n"
+}
 [BarreReservee]::Commande = [Func[string, string]] {
   param($c)
   switch ($c) {
@@ -489,6 +944,10 @@ function Musique([bool]$force) {
     'bluetooth' { Basculer 'Bluetooth' }
     'musique' { Musique $false }
     'musique-force' { Musique $true }
+    'apps' { (Get-StartApps | ForEach-Object { "$($_.Name)`t$($_.AppID)" }) -join "`n" }
+    'notifs' { Notifs }
+    'notif-effacer' { [Windows.UI.Notifications.Management.UserNotificationListener]::Current.ClearNotifications(); '' }
+    default { if ($c -like 'notif-suppr:*') { [Windows.UI.Notifications.Management.UserNotificationListener]::Current.RemoveNotification([uint32]$c.Substring(12)) }; '' }
   }
 }
 [BarreReservee]::Lancer($Hauteur)

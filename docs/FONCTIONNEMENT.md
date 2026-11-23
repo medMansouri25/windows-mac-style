@@ -82,9 +82,9 @@ Depuis Windows 11 24H2, l'ancienne API Wi-Fi (`WlanAPI`, utilisée par le plugin
 Skin `MacWidgets\PanneauBatterie`, ouvert par un clic sur l'icône de batterie (`!Toggle`). Le même clic lance `infos_batterie.ps1`.
 
 - **Infos** (`infos_batterie.ps1`) : WMI `root\wmi` (`BatteryStatus`, `BatteryFullChargedCapacity`, `BatteryCycleCount`). La capacité d'origine vient du rapport `powercfg /batteryreport /xml` (environ 1 s), gardé une semaine dans `batterie_origine.txt`, car la classe WMI `BatteryStaticData` est refusée sans droits administrateur. Santé = capacité actuelle / d'origine. Les valeurs sont envoyées à Rainmeter par `WM_COPYDATA`.
-- **Verre et fermeture** (`barre_reservee.ps1`) : un minuteur de 120 ms repère la fenêtre du panneau. À chaque ouverture, il applique le flou acrylique de Windows (`SetWindowCompositionAttribute`) et des coins arrondis (`SetWindowRgn`). Un clic hors du panneau et hors de l'icône (zone lue dans `zone_batterie.txt`), ou la touche Échap, le referme.
+- **Verre et fermeture** (`barre_reservee.ps1`) : un minuteur de 120 ms repère la fenêtre du panneau. À chaque ouverture, il prépare le fond en verre (voir « Effet verre des panneaux »). Un clic hors du panneau et hors de l'icône (zone lue dans `zone_batterie.txt`), ou la touche Échap, le referme.
 - **Mode économie** : le choix Auto / Activé / Désactivé est écrit par Rainmeter dans `PanneauBatterie\etat.inc`. Rainmeter n'écrit (`!WriteKeyValue`) que dans ses dossiers de skins. Le moteur lit ce fichier toutes les 3 s. Un choix manuel s'applique sans attendre les 15 s.
-- **Conservation** (`conservation.ps1`, PC HP) : réglage BIOS `Battery Health Manager` (« Maximize my battery health On/Off ») via WMI `root\HP\InstrumentedBIOS` (`HP_BIOSSettingInterface.SetBIOSSetting`). Il faut les droits administrateur : le script se relance avec `-Verb RunAs`, Windows demande Oui/Non à chaque fois, et aucun droit permanent n'est installé. L'état connu est gardé dans `etat.inc`. La désinstallation ne touche pas à ce réglage du BIOS.
+- **Conservation** (`conservation.ps1`, PC HP) : réglage BIOS `Battery Health Manager` (« Maximize my battery health On/Off ») via WMI `root\HP\InstrumentedBIOS` (`HP_BIOSSettingInterface.SetBIOSSetting`). Il faut les droits administrateur. Pour éviter la fenêtre Oui/Non à chaque fois, `install\installer_conservation.ps1` (lancé par l'installateur, seulement sur PC HP) copie `conservation_admin.ps1` dans `C:\Program Files\InterfaceMac`, modifiable seulement par un administrateur. Il crée deux tâches à paramètres fixes, « Interface Mac - conservation On / Off » (niveau le plus élevé, sans fenêtre), qui ne règlent que ce paramètre. Le résultat est écrit dans `C:\ProgramData\InterfaceMac`, en lecture seule pour les utilisateurs, ce qui empêche de détourner l'écriture faite en administrateur. Sans ces tâches, le script se relance avec `-Verb RunAs` et Windows demande Oui/Non. L'état connu est gardé dans `etat.inc`. La désinstallation ne touche pas à ce réglage du BIOS.
 - Fermé, le panneau ne se met pas à jour (`Update=-1`) : il ne coûte presque rien.
 
 ## Centre de contrôle
@@ -100,6 +100,24 @@ Skin `MacWidgets\CentreControle`, ouvert par l'icône ⚙ de la barre.
 ## Effet verre des panneaux
 
 Windows ne floute pas les fenêtres de Rainmeter, qui ont une transparence pixel par pixel : `SetWindowCompositionAttribute` (flou ou acrylique) donnait un gris uni et peignait les coins. Le verre est donc une image. Juste avant l'ouverture, le moteur photographie ce qu'il y a derrière le panneau (`CopyFromScreen`), le réduit puis l'agrandit (flou), ajoute une teinte légère et arrondit les coins. Il l'enregistre (`verre<horodatage>.png`, nom unique car Rainmeter garde les images en mémoire) et l'affiche en fond (`FondVerre`). Le résultat est proche du dock. Limite : le fond est figé pendant que le panneau est ouvert.
+
+## Spotlight, calendrier et notifications
+
+Ces deux fenêtres sont de vraies fenêtres dessinées par le moteur (classes `Spotlight` et `Agenda` dans `barre_reservee.ps1`), avec le même verre que les panneaux : photo floutée du fond prise avant l'ouverture, et coins arrondis par Windows (`DWMWA_WINDOW_CORNER_PREFERENCE`). Rainmeter ne sait gérer ni une saisie au clavier en direct, ni des listes qui changent.
+
+- **Spotlight** : raccourci **Alt + Espace** (`RegisterHotKey` ; ⊞ + Espace est réservé par Windows au changement de clavier). Windows ne laisse pas un programme en arrière-plan prendre le clavier : la loupe (message 12) simule donc ce raccourci, et la fenêtre ouverte par un raccourci a le droit de prendre le clavier.
+  - Applications : liste `Get-StartApps` (rechargée au plus toutes les 10 min), lancées par `shell:AppsFolder\<ID>`.
+  - Fichiers : index de recherche Windows (OLE DB `Search.CollatorDSO`, en arrière-plan), sans raccourcis `.lnk`, dossiers ni fichiers internes (`AppData`, `ProgramData`). Le vrai chemin vient de `System.ItemUrl`, car `ItemPathDisplay` est traduit (« Utilisateurs »).
+  - Calcul : `DataTable.Compute` (« 12*8 », « 15 % de 80 »).
+  - Web : recherche Google.
+  - Icônes : `IShellItemImageFactory`, avec la transparence.
+- **Calendrier + notifications** (message 13, clic sur la date) : la fenêtre s'affiche sans prendre le clavier. Le moteur la ferme au clic à côté ou avec Échap. Les notifications viennent de l'API WinRT `UserNotificationListener` (autorisée sans droits administrateur). Clic sur une notification : ouverture de l'application (`AppUserModelId`) et suppression de la notification. « Tout effacer » : `ClearNotifications`.
+- **Nom de l'application** (à la place de « Bureau ») : toutes les 0,5 s, le moteur regarde la fenêtre au premier plan. Il prend le nom du produit, ou à défaut la description du programme, et passe par la fenêtre enfant pour les applications du Store. Il ne l'envoie à la barre (variable `NomApp`) que s'il change. Les panneaux de l'interface et les menus de Windows gardent le nom précédent.
+- **Logo** (message 14) : le moteur simule la touche ⊞, ce qui ouvre le menu Démarrer comme le bouton du dock.
+
+## Fenêtres cachées
+
+Tous les scripts sont lancés par `lancer_invisible.vbs` avec `conhost.exe --headless`. Quand Windows Terminal est le terminal par défaut, il ignore la consigne « fenêtre cachée » et affichait des fenêtres PowerShell. Les tâches de conservation utilisent aussi `conhost --headless`.
 
 ## Panneaux Windows depuis la barre
 

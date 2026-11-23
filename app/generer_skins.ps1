@@ -85,6 +85,7 @@ Name=Barre des menus
 Information=Barre fine en haut de l'ecran, facon Mac. Genere par generer_skins.ps1 (echelle $S, largeur $largeur px).
 
 [Variables]
+NomApp=$nomMenu
 Police=Segoe UI Variable Text
 Icones=Segoe Fluent Icons
 Txt=255,255,255,255
@@ -103,7 +104,7 @@ InfoCharge=Batterie en charge
 InfoEco=Mode économie actif
 InfoPause=Branché – recharge en pause (limite de charge)
 InfoChargeEco=En charge – économie d'énergie activée
-Start="wscript.exe" "$(Join-Path $App 'lancer_invisible.vbs')" "$(Join-Path $App 'raccourci.ps1')" "Demarrer"
+Start=!CommandMeasure MesureMoteur "SendMessage 32769 14 0"
 
 [MesureDate]
 Measure=Time
@@ -163,7 +164,8 @@ Meter=String
 MeterStyle=StyleMenu
 FontWeight=700
 X=$(n 42)
-Text=$nomMenu
+Text=#NomApp#
+DynamicVariables=1
 LeftMouseUpAction=[shell:::{3080F90D-D7AD-11D9-BD98-0000947B0257}]
 ToolTipText=Afficher le bureau
 
@@ -173,13 +175,6 @@ MeterStyle=StyleMenu
 X=0R
 Text=Fichiers
 LeftMouseUpAction=["explorer.exe"]
-
-[MenuApps]
-Meter=String
-MeterStyle=StyleMenu
-X=0R
-Text=Applications
-LeftMouseUpAction=[#Start#]
 
 [MenuReglages]
 Meter=String
@@ -204,8 +199,8 @@ StringAlign=RightCenter
 InlineSetting=Case | Proper
 X=(#SCREENAREAWIDTH#-$(n 6))
 Text=%1  %2
-LeftMouseUpAction=["wscript.exe" "$lanceur" "$raccourci" "N"]
-ToolTipText=Notifications et calendrier
+LeftMouseUpAction=[!CommandMeasure MesureMoteur "SendMessage 32769 13 0"]
+ToolTipText=Calendrier et notifications
 
 [CentreControle]
 Meter=String
@@ -220,8 +215,8 @@ Meter=String
 MeterStyle=StyleIcone
 X=(#SCREENAREAWIDTH#-$(n 196))
 Text=[\xE721]
-LeftMouseUpAction=["wscript.exe" "$lanceur" "$raccourci" "S"]
-ToolTipText=Rechercher (comme Spotlight)
+LeftMouseUpAction=[!CommandMeasure MesureMoteur "SendMessage 32769 12 0"]
+ToolTipText=Spotlight (Alt + Espace)
 
 [MesureMoteur]
 ; ouvre les panneaux via barre_reservee.ps1 (fenetre InterfaceMacMoteur)

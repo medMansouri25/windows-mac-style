@@ -20,6 +20,8 @@ Etape "Arret de l'interface"
 # 1. d'abord le "moteur" (sinon il relancerait Rainmeter), puis Rainmeter
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*barre_reservee.ps1*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Unregister-ScheduledTask -TaskName 'Interface Mac - demarrage' -Confirm:$false -ErrorAction SilentlyContinue
+foreach ($e in 'On', 'Off') { Unregister-ScheduledTask -TaskName "Interface Mac - conservation $e" -Confirm:$false -ErrorAction SilentlyContinue }
+Remove-Item (Join-Path $env:ProgramFiles 'InterfaceMac'), (Join-Path $env:ProgramData 'InterfaceMac') -Recurse -Force -ErrorAction SilentlyContinue
 # remettre l'ecran comme avant si le mode economie etait actif
 if (Test-Path (Join-Path $cible 'economie_ecran.json')) { & (Join-Path $cible 'economie.ps1') -Mode Desactiver }
 Get-Process Rainmeter -ErrorAction SilentlyContinue | Stop-Process -Force

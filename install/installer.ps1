@@ -255,6 +255,9 @@ $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnB
 $pr  = New-ScheduledTaskPrincipal -UserId $utilisateur -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName 'Interface Mac - demarrage' -Action $act -Trigger $trg -Settings $set -Principal $pr -Description "Lance la barre des menus et le dock facon Mac" -Force | Out-Null
 Ok "Tache 'Interface Mac - demarrage' creee"
+# PC HP : interrupteur « Conservation » sans fenetre Oui/Non (taches limitees a ce seul reglage)
+$cons = & (Join-Path $depot 'install\installer_conservation.ps1') -Source (Join-Path $depot 'app') -Utilisateur $utilisateur
+Ok "Conservation de la batterie : $cons"
 
 # ------------------------------------------------------------------ 9. Lancement + verification
 Etape "Lancement de l'interface"

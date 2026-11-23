@@ -37,14 +37,24 @@ $fichierEtat = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Rainmete
 $avant = 'inconnu'
 if (Test-Path $fichierEtat) { $m = [regex]::Match([IO.File]::ReadAllText($fichierEtat), '(?m)^Conservation=(.*)$'); if ($m.Success) { $avant = $m.Groups[1].Value.Trim() } }
 
-Remove-Item $resultat -ErrorAction SilentlyContinue
-try { Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -Wait -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`" -Etat $Etat -Admin" } catch { }   # « Non » : rien ne change
-
-$nouveau = $avant
-if (Test-Path $resultat) {
-  $r = (Get-Content $resultat -Raw).Trim(); Remove-Item $resultat -ErrorAction SilentlyContinue
-  if ($r -match 'health On$') { $nouveau = 'On' } elseif ($r -match 'health Off$') { $nouveau = 'Off' }
+$r = ''
+$tache = "Interface Mac - conservation $Etat"
+if (Get-ScheduledTask -TaskName $tache -ErrorAction SilentlyContinue) {
+  # 1) taches installees (installer_conservation.ps1) : pas de fenetre Oui/Non
+  $sortie = Join-Path $env:ProgramData 'InterfaceMac\conservation.txt'
+  $dateAvant = (Get-Item $sortie -ErrorAction SilentlyContinue).LastWriteTime
+  Start-ScheduledTask -TaskName $tache
+  $t0 = Get-Date; do { Start-Sleep -Milliseconds 300 } until (((Get-Item $sortie -ErrorAction SilentlyContinue).LastWriteTime -ne $dateAvant) -or ((Get-Date) - $t0).TotalSeconds -gt 20)
+  if (Test-Path $sortie) { $r = (Get-Content $sortie -Raw).Trim() }
+} else {
+  # 2) secours : Windows demande l'autorisation (Oui/Non) a chaque fois
+  Remove-Item $resultat -ErrorAction SilentlyContinue
+  # conhost --headless : aucune fenetre, meme quand Windows Terminal est le terminal par defaut (il ignore « fenetre cachee »)
+  try { Start-Process conhost.exe -Verb RunAs -Wait -ArgumentList "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Etat $Etat -Admin" } catch { }   # « Non » : rien ne change
+  if (Test-Path $resultat) { $r = (Get-Content $resultat -Raw).Trim(); Remove-Item $resultat -ErrorAction SilentlyContinue }
 }
+$nouveau = $avant
+if ($r -match 'health On$') { $nouveau = 'On' } elseif ($r -match 'health Off$') { $nouveau = 'Off' }
 if (Test-Path $fichierEtat) {
   $t = [IO.File]::ReadAllText($fichierEtat)
   $t = if ($t -match '(?m)^Conservation=') { [regex]::Replace($t, '(?m)^Conservation=.*$', "Conservation=$nouveau") } else { $t.TrimEnd() + "`r`nConservation=$nouveau`r`n" }

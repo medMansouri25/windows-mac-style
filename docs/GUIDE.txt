@@ -2,10 +2,11 @@
 ==============================================
 
 EN HAUT — la barre des menus
-  · Logo Windows (à gauche)  = toutes les applications (comme le Launchpad)
-  · Bureau / Fichiers / Applications / Réglages / Aide
-  · À droite : batterie, Wi-Fi, recherche, centre de contrôle (son, luminosité,
-    Bluetooth…), puis date et heure (clic = notifications et calendrier)
+  · Logo Windows (à gauche)  = menu Démarrer (comme le bouton du dock)
+  · Nom de l'application active en gras (comme sur Mac), puis Fichiers /
+    Réglages / Aide
+  · À droite : batterie, Wi-Fi, loupe (Spotlight), centre de contrôle, puis
+    date et heure (clic = calendrier et notifications)
   · Batterie : blanche = sur batterie ; blanche avec éclair = branché (recharge
     en pause) ; VERTE avec éclair = en charge ; JAUNE = mode économie actif ;
     ROUGE = moins de 20 %
@@ -47,8 +48,20 @@ MODE ÉCONOMIE (PC portable)
   · Rebranché : tout revient, et les programmes sont relancés (fenêtres réduites).
   · Liste modifiable dans %LOCALAPPDATA%\InterfaceMac\config.json
 
+SPOTLIGHT (Alt + Espace, ou la loupe de la barre)
+  · Tapez : applications, fichiers récents, calcul (« 12*8 », « 15 % de 80 »)
+    et recherche sur le web. ↑ ↓ pour choisir, Entrée pour ouvrir (ou copier
+    le résultat d'un calcul), Échap pour fermer.
+
+CALENDRIER ET NOTIFICATIONS (clic sur la date)
+  · Le mois en cours (aujourd'hui en bleu), flèches ‹ › pour changer de mois,
+    clic sur le titre pour revenir à aujourd'hui.
+  · Les dernières notifications : clic = ouvrir l'application ;
+    « Tout effacer » ; lien vers le centre de notifications de Windows.
+
 RACCOURCIS CLAVIER
-  Touche Windows ⊞    → toutes les applications et recherche (comme Spotlight)
+  Alt + Espace        → Spotlight
+  Touche Windows ⊞    → menu Démarrer
   ⊞ + D               → voir le bureau
   ⊞ + E               → fichiers (comme le Finder)
   ⊞ + S               → rechercher (comme la loupe de la barre)

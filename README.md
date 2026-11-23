@@ -8,10 +8,12 @@
 
 Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
-- **Barre des menus en haut** : logo, menus, batterie, Wi-Fi, recherche, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
+- **Barre des menus en haut** : logo (menu Démarrer), **nom de l'application active** en gras, menus, batterie, Wi-Fi, Spotlight, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
+- 🔍 **Spotlight** (Alt + Espace ou la loupe) : applications, fichiers, calcul et recherche web, au fil de la frappe, en verre.
+- 📅 **Calendrier et notifications** (clic sur la date) : le mois en cours et les dernières notifications, en verre.
 - **Dock en verre en bas** : icônes centrées, **effet loupe** au survol, petits points sous les applications ouvertes.
 - 🎛️ **Centre de contrôle façon Mac** (icône ⚙) : tuiles Wi-Fi et Bluetooth (on/off), curseurs Écran et Son qu'on peut faire glisser, musique en cours avec pochette (lecture/pause, suivant), en verre comme le dock.
-- 🔋 **Panneau batterie en verre** (clic sur la batterie) : santé de la batterie en %, nombre de cycles, temps restant ; mode économie **Auto / Activé / Désactivé** ; **conservation de la batterie** (charge limitée à 80 %, PC HP) avec la fenêtre d'autorisation de Windows à chaque changement.
+- 🔋 **Panneau batterie en verre** (clic sur la batterie) : santé de la batterie en %, nombre de cycles, temps restant ; mode économie **Auto / Activé / Désactivé** ; **conservation de la batterie** (charge limitée à 80 %, PC HP), sans fenêtre d'autorisation après l'installation.
 - **Wi-Fi dynamique** : comme sur Mac, les arcs s'allument selon la force du signal, et l'icône est barrée sans connexion ou sans accès à Internet.
 - **Pastilles de volume et de luminosité** façon Apple : barre blanche et pourcentage, sous la barre des menus.
 - **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, **jaune en mode économie**, rouge sous 20 %.
@@ -34,6 +36,10 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 | Centre de contrôle (icône ⚙) | Panneau batterie (clic sur la batterie) |
 |---|---|
 | ![Centre de contrôle façon Mac en verre : Wi-Fi, Bluetooth, écran, son, musique](docs/captures/centre_controle.jpg) | ![Panneau batterie en verre : santé, cycles, mode économie, conservation](docs/captures/panneau_batterie.jpg) |
+
+| Spotlight (Alt + Espace) | Calendrier et notifications (clic sur la date) |
+|---|---|
+| ![Spotlight en verre : calcul, applications, fichiers, web](docs/captures/spotlight.jpg) | ![Calendrier en verre sous la date](docs/captures/calendrier.jpg) |
 
 ## 🔋 Mode économie sur batterie
 
@@ -130,11 +136,13 @@ app/                     → l'interface (copiée dans %LOCALAPPDATA%\InterfaceM
   fond_ecran.ps1         → applique le fond d'écran
   batterie.lua           → logique de l'icône de batterie
   infos_batterie.ps1     → remplit le panneau batterie (santé, cycles, temps restant)
-  conservation.ps1       → mode conservation HP (demande l'autorisation à chaque fois)
+  conservation.ps1       → mode conservation HP (côté utilisateur)
+  conservation_admin.ps1 → partie administrateur, installée dans Program Files (PC HP)
   raccourci.ps1, *.vbs   → lanceurs invisibles et raccourcis clavier
 install/
   installer.ps1          → installation complète
   desinstaller.ps1       → désinstallation complète
+  installer_conservation.ps1 → tâches « conservation » sans fenêtre Oui/Non (PC HP)
 docs/                    → documentation
 ```
 
