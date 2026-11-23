@@ -31,6 +31,10 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 |---|---|
 | ![Pastille de volume façon Apple](docs/captures/volume.jpg) | ![Pastille de luminosité façon Apple](docs/captures/luminosite.jpg) |
 
+| Centre de contrôle (icône ⚙) | Panneau batterie (clic sur la batterie) |
+|---|---|
+| ![Centre de contrôle façon Mac en verre : Wi-Fi, Bluetooth, écran, son, musique](docs/captures/centre_controle.jpg) | ![Panneau batterie en verre : santé, cycles, mode économie, conservation](docs/captures/panneau_batterie.jpg) |
+
 ## 🔋 Mode économie sur batterie
 
 > **Le point fort pour les PC portables : gagnez de l'autonomie automatiquement, sans y penser.**
