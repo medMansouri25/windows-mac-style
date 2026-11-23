@@ -29,7 +29,14 @@ public interface IMMDeviceEnumerator { [PreserveSig] int EnumAudioEndpoints(int 
 [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 public interface IMMDevice { [PreserveSig] int Activate(ref Guid iid, int ctx, IntPtr p, [MarshalAs(UnmanagedType.IUnknown)] out object o); [PreserveSig] int OpenPropertyStore(int a, out IntPtr p); [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); }
 [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IAudioEndpointVolume { [PreserveSig] int RegisterControlChangeNotify(IAudioEndpointVolumeCallback cb); [PreserveSig] int UnregisterControlChangeNotify(IAudioEndpointVolumeCallback cb); }
+public interface IAudioEndpointVolume {
+  [PreserveSig] int RegisterControlChangeNotify(IAudioEndpointVolumeCallback cb); [PreserveSig] int UnregisterControlChangeNotify(IAudioEndpointVolumeCallback cb);
+  [PreserveSig] int GetChannelCount(out uint n); [PreserveSig] int SetMasterVolumeLevel(float db, ref Guid ctx); [PreserveSig] int SetMasterVolumeLevelScalar(float v, ref Guid ctx);
+  [PreserveSig] int GetMasterVolumeLevel(out float db); [PreserveSig] int GetMasterVolumeLevelScalar(out float v);
+  [PreserveSig] int SetChannelVolumeLevel(uint c, float db, ref Guid ctx); [PreserveSig] int SetChannelVolumeLevelScalar(uint c, float v, ref Guid ctx);
+  [PreserveSig] int GetChannelVolumeLevel(uint c, out float db); [PreserveSig] int GetChannelVolumeLevelScalar(uint c, out float v);
+  [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool m, ref Guid ctx); [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool m);
+}
 [Guid("657804FA-D6AD-4496-8A60-352752AF4F89"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 public interface IAudioEndpointVolumeCallback { [PreserveSig] int OnNotify(IntPtr data); }
 public class EcouteVolume : IAudioEndpointVolumeCallback {
@@ -145,6 +152,7 @@ public class BarreReservee : Form {
   }
   // envoi direct a Rainmeter (WM_COPYDATA), sans lancer de processus a chaque cran de volume
   void EnvoyerVolume(int n) {
+    if (pCC.Vis) { EnvoyerCC("Son", n); return; }   // centre de controle ouvert : on bouge son curseur, pas la pastille
     EnvoyerBang("[!SetVariable Vol " + n + " \"MacWidgets\\Volume\"][!UpdateMeasure MesureVolume \"MacWidgets\\Volume\"]");
   }
   void EnvoyerBang(string b) {
@@ -153,7 +161,7 @@ public class BarreReservee : Form {
     try { IntPtr r; SendMessageTimeout(h, 0x4A, IntPtr.Zero, ref cd, 2, 1000, out r); } finally { Marshal.FreeHGlobal(cd.lpData); }
   }
 
-  // --- Panneau batterie (clic sur l'icone) : effet verre, fermeture au clic a cote ou avec Echap ---
+  // --- Panneaux en verre (batterie, centre de controle) : fermeture au clic a cote ou avec Echap ---
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] static extern short GetAsyncKeyState(int v);
@@ -169,44 +177,162 @@ public class BarreReservee : Form {
   delegate bool EnumCB(IntPtr h, IntPtr l);
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumCB cb, IntPtr l);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
-  System.Windows.Forms.Timer minuteurPanneau; IntPtr panneau = IntPtr.Zero; bool panneauVisible, clicAvant; int recherche = 0;
-  int[] zoneBat = new int[] { -1, -1, -1, -1, 20 };   // icone batterie (x1,x2,y1,y2) + rayon des coins, ecrits par generer_skins.ps1
+  [DllImport("user32.dll")] static extern void keybd_event(byte v, byte s, uint f, UIntPtr e);
+  class Panneau { public string Nom; public IntPtr H; public bool Vis; public int[] Zone = new int[] { -1, -1, -1, -1, 20 }; }
+  Panneau pBat = new Panneau { Nom = "PanneauBatterie" }, pCC = new Panneau { Nom = "CentreControle" };
+  System.Windows.Forms.Timer minuteurPanneau; bool clicAvant; int recherche = 0;
+  int[] curseurs = new int[8];                 // centre de controle : luminosite (x,y,l,h) puis son (x,y,l,h), en pixels, relatifs au panneau
+  int glisse = 0, toursCC = 0; int[] derniers = new int[] { -1, -1 };
 
+  int[] LireNombres(string f, int n) {
+    var r = new int[n]; for (int i = 0; i < n; i++) r[i] = -1;
+    try { var v = System.IO.File.ReadAllText(Dossier + f).Trim().Split(','); for (int i = 0; i < n && i < v.Length; i++) r[i] = int.Parse(v[i]); } catch { }
+    return r;
+  }
+  // zones ecrites par generer_skins.ps1 : icone de la barre (x1,x2,y1,y2) + rayon des coins (+ curseurs)
   void LireZone() {
-    try { var v = System.IO.File.ReadAllText(Dossier + "zone_batterie.txt").Trim().Split(','); for (int i = 0; i < 5 && i < v.Length; i++) zoneBat[i] = int.Parse(v[i]); } catch { }
+    pBat.Zone = LireNombres("zone_batterie.txt", 5);
+    var c = LireNombres("zone_centre.txt", 13);
+    pCC.Zone = new int[] { c[0], c[1], c[2], c[3], c[4] };
+    for (int i = 0; i < 8; i++) curseurs[i] = c[5 + i];
   }
   IntPtr TrouverSkin(string fin) {
     IntPtr t = IntPtr.Zero;
     EnumWindows((h, l) => { var sb = new System.Text.StringBuilder(300); GetWindowText(h, sb, 300); if (sb.ToString().EndsWith(fin)) { t = h; return false; } return true; }, IntPtr.Zero);
     return t;
   }
-  // verre : flou + teinte sombre de Windows (acrylique), coins arrondis
-  void Habiller(IntPtr h) {
-    RECTP r; GetWindowRect(h, out r); int ray = zoneBat[4] * 2;
-    SetWindowRgn(h, CreateRoundRectRgn(0, 0, r.r - r.l + 1, r.b - r.t + 1, ray, ray), true);
-    var a = new ACCENT(); a.Etat = 4; a.Drapeaux = 2; a.Couleur = 0x8C1E161A;
-    int taille = Marshal.SizeOf(a); IntPtr p = Marshal.AllocHGlobal(taille);
-    try { Marshal.StructureToPtr(a, p, false); var d = new WCAD(); d.Attribut = 19; d.Donnees = p; d.Taille = taille; SetWindowCompositionAttribute(h, ref d); }
-    finally { Marshal.FreeHGlobal(p); }
+  // coins arrondis (le verre lui-meme est une image : voir Verre)
+  void Habiller(Panneau p) {
+    RECTP r; GetWindowRect(p.H, out r); int ray = (p.Zone[4] > 0 ? p.Zone[4] : 20) * 2;
+    SetWindowRgn(p.H, IntPtr.Zero, true);   // pas de decoupe : Windows peint mal les coins des fenetres Rainmeter ; image et cadre sont deja arrondis
+    var a = new ACCENT(); a.Etat = 0;   // aucun effet Windows (il peindrait les coins) : le verre est l'image de fond
+    int taille = Marshal.SizeOf(a); IntPtr q = Marshal.AllocHGlobal(taille);
+    try { Marshal.StructureToPtr(a, q, false); var d = new WCAD(); d.Attribut = 19; d.Donnees = q; d.Taille = taille; SetWindowCompositionAttribute(p.H, ref d); }
+    finally { Marshal.FreeHGlobal(q); }
+  }
+  // Verre facon dock : Windows ne floute pas les fenetres Rainmeter (transparence pixel par pixel),
+  // alors juste avant l'ouverture on photographie ce qu'il y a derriere le panneau, on le floute
+  // et on le teinte legerement : cette image devient le fond du panneau.
+  string Verre(Panneau p) {
+    RECTP r; GetWindowRect(p.H, out r); int w = r.r - r.l, h = r.b - r.t; if (w < 10 || h < 10) return "";
+    string dossierSkin = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"Rainmeter\Skins\MacWidgets\" + p.Nom);
+    // nom unique a chaque ouverture (Rainmeter garde les images en memoire) ; on efface les anciennes
+    string f = System.IO.Path.Combine(dossierSkin, "verre" + DateTime.Now.Ticks + ".png");
+    try { foreach (var v in System.IO.Directory.GetFiles(dossierSkin, "verre*.png")) System.IO.File.Delete(v); } catch { }
+    try {
+      using (var ecran = new System.Drawing.Bitmap(w, h)) {
+        using (var g = System.Drawing.Graphics.FromImage(ecran)) g.CopyFromScreen(r.l, r.t, 0, 0, new System.Drawing.Size(w, h));
+        int pw = Math.Max(2, w / 18), ph = Math.Max(2, h / 18);
+        using (var petit = new System.Drawing.Bitmap(pw, ph)) {
+          using (var g = System.Drawing.Graphics.FromImage(petit)) { g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; g.DrawImage(ecran, 0, 0, pw, ph); }
+          using (var g = System.Drawing.Graphics.FromImage(ecran)) {
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            g.DrawImage(petit, new System.Drawing.Rectangle(0, 0, w, h));
+            using (var voile = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(78, 28, 26, 34))) g.FillRectangle(voile, 0, 0, w, h);
+          }
+        }
+        // coins arrondis transparents (comme la forme du panneau)
+        using (var rond = new System.Drawing.Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb)) {
+          int d = (p.Zone[4] > 0 ? p.Zone[4] : 20) * 2;
+          using (var g = System.Drawing.Graphics.FromImage(rond))
+          using (var forme = new System.Drawing.Drawing2D.GraphicsPath())
+          using (var pinceau = new System.Drawing.TextureBrush(ecran)) {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            forme.AddArc(0, 0, d, d, 180, 90); forme.AddArc(w - d - 1, 0, d, d, 270, 90);
+            forme.AddArc(w - d - 1, h - d - 1, d, d, 0, 90); forme.AddArc(0, h - d - 1, d, d, 90, 90); forme.CloseFigure();
+            g.FillPath(pinceau, forme);
+          }
+          rond.Save(f, System.Drawing.Imaging.ImageFormat.Png);
+        }
+      }
+      return f;
+    } catch { return ""; }
+  }
+  // ouverture / fermeture d'un panneau (clic sur son icone dans la barre)
+  void Basculer(Panneau p) {
+    if (p.H == IntPtr.Zero || !IsWindow(p.H)) p.H = TrouverSkin(p.Nom + ".ini");
+    if (p.H == IntPtr.Zero) return;
+    string cfg = "\"MacWidgets\\" + p.Nom + "\"";
+    if (IsWindowVisible(p.H)) { EnvoyerBang("[!Hide " + cfg + "]"); return; }
+    foreach (var a in new[] { pBat, pCC }) if (a != p && a.H != IntPtr.Zero && IsWindowVisible(a.H)) EnvoyerBang("[!Hide \"MacWidgets\\" + a.Nom + "\"]");
+    string img = Verre(p);
+    EnvoyerBang("[!SetVariable FondVerre \"" + img + "\" " + cfg + "][!UpdateMeter FondVerre " + cfg + "][!Redraw " + cfg + "][!Show " + cfg + "]");
   }
   void SurveillerPanneau(object o, EventArgs e) {
-    if (panneau == IntPtr.Zero || !IsWindow(panneau)) {
-      if (recherche++ % 20 != 0) return;           // cherche la fenetre au plus toutes les 2,4 s
-      panneau = TrouverSkin("PanneauBatterie.ini"); panneauVisible = false; if (panneau == IntPtr.Zero) return;
-    }
-    bool vis = IsWindowVisible(panneau);
-    if (vis && !panneauVisible) Habiller(panneau);
-    panneauVisible = vis;
-    bool clic = (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0;
+    bool chercher = recherche++ % 20 == 0;     // cherche les fenetres au plus toutes les 2,4 s
+    bool gauche = (GetAsyncKeyState(0x01) & 0x8000) != 0;
+    bool clic = gauche || (GetAsyncKeyState(0x02) & 0x8000) != 0;
     bool echap = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
-    if (vis && ((clic && !clicAvant) || echap)) {
-      PT p; GetCursorPos(out p); RECTP r; GetWindowRect(panneau, out r);
-      bool dedans = p.x >= r.l && p.x < r.r && p.y >= r.t && p.y < r.b;
-      bool surIcone = p.x >= zoneBat[0] && p.x <= zoneBat[1] && p.y >= zoneBat[2] && p.y <= zoneBat[3];
-      if (echap || (!dedans && !surIcone)) EnvoyerBang("[!Hide \"MacWidgets\\PanneauBatterie\"]");
+    PT pt; GetCursorPos(out pt);
+    foreach (var p in new[] { pBat, pCC }) {
+      if (p.H == IntPtr.Zero || !IsWindow(p.H)) { p.H = IntPtr.Zero; p.Vis = false; if (chercher) p.H = TrouverSkin(p.Nom + ".ini"); if (p.H == IntPtr.Zero) continue; }
+      bool vis = IsWindowVisible(p.H);
+      if (vis && !p.Vis) { Habiller(p); if (p == pCC) OuvertureCC(); }
+      p.Vis = vis;
+      if (!vis) { if (p == pCC) glisse = 0; continue; }
+      RECTP r; GetWindowRect(p.H, out r);
+      bool dedans = pt.x >= r.l && pt.x < r.r && pt.y >= r.t && pt.y < r.b;
+      if ((clic && !clicAvant) || echap) {
+        bool surIcone = pt.x >= p.Zone[0] && pt.x <= p.Zone[1] && pt.y >= p.Zone[2] && pt.y <= p.Zone[3];
+        if (echap || (!dedans && !surIcone)) { EnvoyerBang("[!Hide \"MacWidgets\\" + p.Nom + "\"]"); continue; }
+        if (p == pCC && gauche && dedans) { glisse = Curseur(pt, r); derniers[0] = -1; derniers[1] = -1; }
+      }
+      if (p == pCC) {
+        if (!gauche) glisse = 0;
+        if (glisse != 0) AppliquerCurseur(glisse, pt, r);
+        if (++toursCC % 10 == 0) Executer("musique");   // musique en cours relue toutes les 1,2 s, seulement panneau ouvert
+      }
     }
     clicAvant = clic;
+    minuteurPanneau.Interval = glisse != 0 ? 30 : 120;   // plus fluide pendant qu'on fait glisser un curseur
   }
+
+  // --- Centre de controle : curseurs (on peut cliquer ou faire glisser), commandes, musique ---
+  public static Func<string, string> Commande;   // fourni par PowerShell (Wi-Fi, Bluetooth, musique : API WinRT)
+  void Executer(string c) { if (Commande == null) return; string b = ""; try { b = Commande(c); } catch { } if (!string.IsNullOrEmpty(b)) EnvoyerBang(b); }
+  void EnvoyerCC(string var, int v) {
+    EnvoyerBang("[!SetVariable " + var + " " + v + " \"MacWidgets\\CentreControle\"][!UpdateMeasure Mesure" + var + " \"MacWidgets\\CentreControle\"][!UpdateMeterGroup " + var + " \"MacWidgets\\CentreControle\"][!Redraw \"MacWidgets\\CentreControle\"]");
+  }
+  int Curseur(PT pt, RECTP r) {
+    for (int k = 0; k < 2; k++) {
+      int x = r.l + curseurs[k * 4], y = r.t + curseurs[k * 4 + 1], w = curseurs[k * 4 + 2], h = curseurs[k * 4 + 3];
+      if (w > 0 && pt.x >= x - h / 2 && pt.x <= x + w + h / 2 && pt.y >= y - h / 2 && pt.y <= y + h + h / 2) return k + 1;
+    }
+    return 0;
+  }
+  void AppliquerCurseur(int k, PT pt, RECTP r) {
+    int i = (k - 1) * 4, x = r.l + curseurs[i], w = curseurs[i + 2];
+    int v = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, (pt.x - x) / (double)w)) * 100);
+    if (v == derniers[k - 1]) return; derniers[k - 1] = v;
+    if (k == 1) RegleLuminosite(v); else RegleSon(v);
+  }
+  System.Management.ManagementObject methodesLum;
+  void RegleLuminosite(int v) {
+    try {
+      if (methodesLum == null) foreach (System.Management.ManagementObject m in new System.Management.ManagementObjectSearcher(@"root\WMI", "SELECT * FROM WmiMonitorBrightnessMethods").Get()) { methodesLum = m; break; }
+      if (methodesLum != null) methodesLum.InvokeMethod("WmiSetBrightness", new object[] { (uint)1, (byte)v });
+    } catch { methodesLum = null; }
+    EnvoyerCC("Lum", v);
+  }
+  void RegleSon(int v) {
+    try { Guid g = Guid.Empty; volPeriph.SetMasterVolumeLevelScalar(v / 100f, ref g); if (v > 0) volPeriph.SetMute(false, ref g); } catch { }
+    EnvoyerCC("Son", v);
+  }
+  void OuvertureCC() {
+    try { foreach (System.Management.ManagementObject m in new System.Management.ManagementObjectSearcher(@"root\WMI", "SELECT CurrentBrightness FROM WmiMonitorBrightness").Get()) { EnvoyerCC("Lum", Convert.ToInt32(m["CurrentBrightness"])); break; } } catch { }
+    try { float f; bool mu; volPeriph.GetMasterVolumeLevelScalar(out f); volPeriph.GetMute(out mu); EnvoyerCC("Son", mu ? -1 : (int)Math.Round(f * 100)); } catch { }
+    Executer("etat"); Executer("musique-force"); toursCC = 0;
+  }
+  // commandes envoyees par le panneau (WindowMessagePlugin -> message WM_APP+1)
+  void ActionCC(int c) {
+    if (c == 1) Touche(0xB3); else if (c == 2) Touche(0xB0); else if (c == 3) Touche(0xB1);       // lecture/pause, suivant, precedent
+    else if (c == 4) Executer("wifi"); else if (c == 5) Executer("bluetooth");
+    else if (c == 10) Basculer(pBat); else if (c == 11) Basculer(pCC);                          // icones de la barre
+    else if (c == 6) { try { bool mu; Guid g = Guid.Empty; volPeriph.GetMute(out mu); volPeriph.SetMute(!mu, ref g); } catch { } }
+    if (c <= 3) toursCC = 6;   // musique relue dans 0,5 s
+  }
+  void Touche(byte v) { keybd_event(v, 0, 1, UIntPtr.Zero); keybd_event(v, 0, 3, UIntPtr.Zero); }
 
   // --- Mode eco choisi dans le panneau : auto (selon le chargeur), on (force), off (coupe) ---
   string ecoForce = "auto";
@@ -226,7 +352,8 @@ public class BarreReservee : Form {
       veilleLum.EventArrived += (s, e) => {
         try {
           int v = Convert.ToInt32(e.NewEvent["Brightness"]);
-          Bang("[!SetVariable Lum " + v + " \"MacWidgets\\Luminosite\"][!UpdateMeasure MesureLum \"MacWidgets\\Luminosite\"]");
+          if (pCC.Vis) { EnvoyerCC("Lum", v); return; }
+          EnvoyerBang("[!SetVariable Lum " + v + " \"MacWidgets\\Luminosite\"][!UpdateMeasure MesureLum \"MacWidgets\\Luminosite\"]");
         } catch { }
       };
       veilleLum.Start();
@@ -240,7 +367,7 @@ public class BarreReservee : Form {
     hauteurLogique = h;
     FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false;
     StartPosition = FormStartPosition.Manual; Location = new System.Drawing.Point(-32000, -32000);
-    Size = new System.Drawing.Size(1, 1); Opacity = 0;
+    Size = new System.Drawing.Size(1, 1); Opacity = 0; Text = "InterfaceMacMoteur";   // nom vise par le centre de controle (WindowMessagePlugin)
     taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     cb = RegisterWindowMessage("BarreReserveeMac");
     minuteur = new System.Windows.Forms.Timer(); minuteur.Interval = 3000; minuteur.Tick += Verifier; minuteur.Start();
@@ -269,6 +396,7 @@ public class BarreReservee : Form {
   protected override void WndProc(ref Message m) {
     if (m.Msg == (int)taskbarCreated) { inscrit = false; Inscrire(); }      // Explorateur relance
     else if (m.Msg == (int)cb && (int)m.WParam == 1) { Placer(); }
+    else if (m.Msg == 0x8001) { int c = (int)m.WParam; BeginInvoke(new Action(() => ActionCC(c))); }   // commande du centre de controle
     else if (m.Msg == 0x007E) { Placer(); }                                 // changement de resolution
     base.WndProc(ref m);
   }
@@ -297,5 +425,70 @@ $null = [Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.
   $b = [int]$p.GetSignalBars()
   $n = if ($b -ge 4) { 4 } elseif ($b -eq 3) { 3 } elseif ($b -eq 2) { 2 } else { 1 }
   "$n|Wi-Fi : $nom (signal $b/5)"
+}
+# Centre de controle : Wi-Fi / Bluetooth (API Radios) et musique en cours (API GSMTC), sans droits administrateur
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$script:asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]
+function Attendre($op, [Type]$type) { $t = $script:asTask.MakeGenericMethod($type).Invoke($null, @($op)); $null = $t.Wait(3000); $t.Result }
+$null = [Windows.Devices.Radios.Radio, Windows.System.Devices, ContentType = WindowsRuntime]
+$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
+$null = [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]
+$script:skinCC = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Rainmeter\Skins\MacWidgets\CentreControle'
+$script:cfgCC = '"MacWidgets\CentreControle"'
+$script:musiqueAvant = ''; $script:titreAvant = $null; $script:pochetteN = 0; $script:gestionnaire = $null
+try { $null = Attendre ([Windows.Devices.Radios.Radio]::RequestAccessAsync()) ([Windows.Devices.Radios.RadioAccessStatus]) } catch { }
+function Radios { Attendre ([Windows.Devices.Radios.Radio]::GetRadiosAsync()) ([System.Collections.Generic.IReadOnlyList[Windows.Devices.Radios.Radio]]) }
+function Nettoyer($t) { ([string]$t) -replace '["\[\]]', '' }
+function EtatRadios {
+  $r = @(Radios); $w = $r | Where-Object { [string]$_.Kind -eq 'WiFi' } | Select-Object -First 1; $b = $r | Where-Object { [string]$_.Kind -eq 'Bluetooth' } | Select-Object -First 1
+  $wOn = $w -and [string]$w.State -eq 'On'; $bOn = $b -and [string]$b.State -eq 'On'
+  $wTxt = if (-not $w) { 'Indisponible' } elseif (-not $wOn) { 'Désactivé' } else {
+    $p = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()
+    if ($p -and $p.IsWlanConnectionProfile) { Nettoyer $p.ProfileName } else { 'Non connecté' } }
+  $bTxt = if (-not $b) { 'Indisponible' } elseif ($bOn) { 'Activé' } else { 'Désactivé' }
+  $bleu = '10,132,255,255'; $gris = '255,255,255,45'; $c = $script:cfgCC
+  "[!SetVariable WifiFond `"$(if ($wOn) { $bleu } else { $gris })`" $c][!SetVariable WifiTexte `"$wTxt`" $c][!SetVariable BtFond `"$(if ($bOn) { $bleu } else { $gris })`" $c][!SetVariable BtTexte `"$bTxt`" $c][!UpdateMeterGroup Radios $c][!Redraw $c]"
+}
+function Basculer($type) {
+  $r = @(Radios) | Where-Object { [string]$_.Kind -eq $type } | Select-Object -First 1
+  if ($r) { $cible = if ([string]$r.State -eq 'On') { [Windows.Devices.Radios.RadioState]::Off } else { [Windows.Devices.Radios.RadioState]::On }; $null = Attendre ($r.SetStateAsync($cible)) ([Windows.Devices.Radios.RadioAccessStatus]) }
+  Start-Sleep -Milliseconds 300; EtatRadios
+}
+function Musique([bool]$force) {
+  if (-not $script:gestionnaire) { $script:gestionnaire = Attendre ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]) }
+  $s = $script:gestionnaire.GetCurrentSession(); $c = $script:cfgCC
+  if (-not $s) {
+    if ($script:musiqueAvant -eq 'aucune' -and -not $force) { return '' }
+    $script:musiqueAvant = 'aucune'; $script:titreAvant = $null
+    return "[!SetVariable MusTitre `"Aucune lecture`" $c][!SetVariable MusArtiste `"`" $c][!SetVariable MusEtat 0 $c][!SetVariable MusImage `"`" $c][!UpdateMeasure MesureMus $c][!UpdateMeterGroup Musique $c][!Redraw $c]"
+  }
+  $p = Attendre ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
+  $joue = if ([string]$s.GetPlaybackInfo().PlaybackStatus -eq 'Playing') { 1 } else { 0 }
+  $titre = Nettoyer $p.Title; $artiste = Nettoyer $p.Artist
+  $sig = "$titre|$artiste|$joue"
+  if ($sig -eq $script:musiqueAvant -and -not $force) { return '' }
+  $script:musiqueAvant = $sig
+  $image = ''
+  if ($titre -ne $script:titreAvant -or $force) {
+    $script:titreAvant = $titre; $script:pochetteN = 1 - $script:pochetteN   # deux fichiers en alternance : Rainmeter garde les images en memoire
+    $fichier = Join-Path $script:skinCC "pochette$($script:pochetteN).img"
+    try {
+      $flux = Attendre ($p.Thumbnail.OpenReadAsync()) ([Windows.Storage.Streams.IRandomAccessStreamWithContentType])
+      $net = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStreamForRead', [Type[]]@([Windows.Storage.Streams.IInputStream])).Invoke($null, @($flux)); $f = [IO.File]::Create($fichier); $net.CopyTo($f); $f.Close(); $net.Close()
+      $image = "[!SetVariable MusImage `"$fichier`" $c]"
+    } catch { $image = "[!SetVariable MusImage `"`" $c]" }
+  }
+  if (-not $titre) { $titre = 'Lecture en cours' }
+  "[!SetVariable MusTitre `"$titre`" $c][!SetVariable MusArtiste `"$artiste`" $c][!SetVariable MusEtat $joue $c]$image[!UpdateMeasure MesureMus $c][!UpdateMeterGroup Musique $c][!Redraw $c]"
+}
+[BarreReservee]::Commande = [Func[string, string]] {
+  param($c)
+  switch ($c) {
+    'etat' { EtatRadios }
+    'wifi' { Basculer 'WiFi' }
+    'bluetooth' { Basculer 'Bluetooth' }
+    'musique' { Musique $false }
+    'musique-force' { Musique $true }
+  }
 }
 [BarreReservee]::Lancer($Hauteur)

@@ -10,7 +10,8 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
 - **Barre des menus en haut** : logo, menus, batterie, Wi-Fi, recherche, centre de contrôle, date et heure. Les fenêtres agrandies s'arrêtent dessous, comme sur Mac.
 - **Dock en verre en bas** : icônes centrées, **effet loupe** au survol, petits points sous les applications ouvertes.
-- 🔋 **Panneau batterie en verre** (clic sur la batterie) : santé de la batterie en %, nombre de cycles, capacité, temps restant ; mode économie **Auto / Activé / Désactivé** ; **conservation de la batterie** (charge limitée à 80 %, PC HP) avec la fenêtre d'autorisation de Windows à chaque changement.
+- 🎛️ **Centre de contrôle façon Mac** (icône ⚙) : tuiles Wi-Fi et Bluetooth (on/off), curseurs Écran et Son qu'on peut faire glisser, musique en cours avec pochette (lecture/pause, suivant), en verre comme le dock.
+- 🔋 **Panneau batterie en verre** (clic sur la batterie) : santé de la batterie en %, nombre de cycles, temps restant ; mode économie **Auto / Activé / Désactivé** ; **conservation de la batterie** (charge limitée à 80 %, PC HP) avec la fenêtre d'autorisation de Windows à chaque changement.
 - **Wi-Fi dynamique** : comme sur Mac, les arcs s'allument selon la force du signal, et l'icône est barrée sans connexion ou sans accès à Internet.
 - **Pastilles de volume et de luminosité** façon Apple : barre blanche et pourcentage, sous la barre des menus.
 - **Batterie intelligente** : blanche sur batterie, verte avec éclair en charge, **jaune en mode économie**, rouge sous 20 %.

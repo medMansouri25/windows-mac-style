@@ -226,6 +226,13 @@ SnapEdges=0
 KeepOnScreen=0
 AlwaysOnTop=2
 
+[MacWidgets\CentreControle]
+Active=1
+Draggable=0
+SnapEdges=0
+KeepOnScreen=0
+AlwaysOnTop=2
+
 [MacWidgets\PanneauBatterie]
 Active=1
 Draggable=0

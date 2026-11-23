@@ -18,9 +18,17 @@ EN BAS — le dock
   · Petit point sous les applications ouvertes.
   · À droite, une petite pastille garde les icônes cachées (Discord, Steam…).
 
+CENTRE DE CONTRÔLE (clic sur l'icône ⚙ de la barre)
+  · Wi-Fi et Bluetooth : clic sur le rond bleu = allumer/éteindre,
+    clic sur le texte = liste des réseaux / appareils.
+  · Écran et Son : cliquez ou faites glisser les curseurs ; bouton à droite
+    du son = couper/remettre le son.
+  · Musique en cours (Spotify, navigateur…) : lecture/pause et suivant.
+  · « Plus de réglages… » ouvre les réglages rapides de Windows.
+
 PANNEAU BATTERIE (clic sur la batterie ou son pourcentage)
   · Santé de la batterie (capacité actuelle / d'origine), nombre de cycles,
-    capacité, temps restant ou temps de charge.
+    temps restant ou temps de charge.
   · Mode économie : Auto (selon le chargeur), Activé (même branché),
     Désactivé (même sur batterie).
   · Conservation de la batterie (PC HP) : charge limitée à 80 % pour qu'elle

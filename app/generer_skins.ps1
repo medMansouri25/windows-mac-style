@@ -43,7 +43,7 @@ Shape3=Rectangle $(n 2),$(n 2),(Max([MesureBatterie],4)*$(n 22)/100),$(n 8.5),$(
 Shape4=Path Eclair | Fill Color #EclairFond# | StrokeWidth $(f 0.8) | Stroke Color #EclairBord# | StrokeLineJoin Round
 Eclair=$(f 14.4),$(f 1.5) | LineTo $(f 9.5),$(f 7.3) | LineTo $(f 12.6),$(f 7.3) | LineTo $(f 11.6),$(f 11.2) | LineTo $(f 16.5),$(f 5.3) | LineTo $(f 13.4),$(f 5.3) | ClosePath 1
 DynamicVariables=1
-LeftMouseUpAction=[!Toggle "MacWidgets\PanneauBatterie"]["wscript.exe" "$lanceur" "$infos"]
+LeftMouseUpAction=[!CommandMeasure MesureMoteur "SendMessage 32769 10 0"]["wscript.exe" "$lanceur" "$infos"]
 ToolTipText=#InfoBat#
 
 [BatteriePct]
@@ -53,7 +53,7 @@ MeasureName=MesureBatterie
 StringAlign=RightCenter
 X=(#SCREENAREAWIDTH#-$(n 288))
 Text=%1 %
-LeftMouseUpAction=[!Toggle "MacWidgets\PanneauBatterie"]["wscript.exe" "$lanceur" "$infos"]
+LeftMouseUpAction=[!CommandMeasure MesureMoteur "SendMessage 32769 10 0"]["wscript.exe" "$lanceur" "$infos"]
 DynamicVariables=1
 "@
 }
@@ -212,8 +212,8 @@ Meter=String
 MeterStyle=StyleIcone
 X=(#SCREENAREAWIDTH#-$(n 168))
 Text=[\xE9E9]
-LeftMouseUpAction=["wscript.exe" "$lanceur" "$raccourci" "A"]
-ToolTipText=Centre de contrôle (son, wifi, luminosité)
+LeftMouseUpAction=[!CommandMeasure MesureMoteur "SendMessage 32769 11 0"]
+ToolTipText=Centre de contrôle
 
 [Recherche]
 Meter=String
@@ -222,6 +222,13 @@ X=(#SCREENAREAWIDTH#-$(n 196))
 Text=[\xE721]
 LeftMouseUpAction=["wscript.exe" "$lanceur" "$raccourci" "S"]
 ToolTipText=Rechercher (comme Spotlight)
+
+[MesureMoteur]
+; ouvre les panneaux via barre_reservee.ps1 (fenetre InterfaceMacMoteur)
+Measure=Plugin
+Plugin=WindowMessagePlugin
+WindowName=InterfaceMacMoteur
+UpdateDivider=-1
 
 [MesureWifi]
 ; niveau envoye par barre_reservee.ps1 (0 = pas de connexion, 1 a 4 = arcs allumes)
@@ -447,7 +454,7 @@ New-Item -ItemType Directory -Force (Join-Path $Skins 'PanneauBatterie') | Out-N
 $etat = Join-Path $Skins 'PanneauBatterie\etat.inc'   # dans le skin : Rainmeter n'ecrit que dans ses dossiers
 if (-not (Test-Path $etat)) { Ecrire $etat "[Variables]`r`nEcoForce=auto`r`nConservation=inconnu`r`n" }
 $conservation = Join-Path $App 'conservation.ps1'
-$pW = n 300; $pH = n 308
+$pW = n 300; $pH = n 286
 $panX = [math]::Max(0, $largeur - [int](n 276) + [int](n 36) - [int]$pW); $panY = [int]$hp + [int](n 6)
 # zone de l'icone (un clic dessus ouvre/ferme deja le panneau) + rayon des coins, lus par barre_reservee.ps1
 Set-Content (Join-Path $App 'zone_batterie.txt') ("{0},{1},0,{2},{3}" -f ($largeur - [int](n 330)), ($largeur - [int](n 276) + [int](n 34)), $hp, (n 14))
@@ -459,7 +466,7 @@ function Segment($nom, $i, $texte, $valeur) {
 [Seg$nom]
 Meter=Shape
 X=$(n ($x + 2))
-Y=$(n 178)
+Y=$(n 156)
 Shape=Rectangle 0,0,$(n ($segW - 4)),$(n 22),$(n 6) | Fill Color #F$nom# | StrokeWidth 0
 DynamicVariables=1
 LeftMouseUpAction=[!SetVariable EcoForce $valeur][!WriteKeyValue Variables EcoForce $valeur "$etat"][!UpdateMeasure MesureEcoForce][!UpdateMeter *][!Redraw]
@@ -468,7 +475,7 @@ LeftMouseUpAction=[!SetVariable EcoForce $valeur][!WriteKeyValue Variables EcoFo
 Meter=String
 MeterStyle=StyleTexte
 X=$(n ($x + $segW / 2))
-Y=$(n 189)
+Y=$(n 167)
 StringAlign=CenterCenter
 FontSize=$(n 8.3)
 FontColor=#T$nom#
@@ -517,6 +524,7 @@ Sante=…
 Cycles=…
 Capacite=…
 EcoActif=…
+FondVerre=
 FAuto=255,255,255,230
 FOn=0,0,0,1
 FOff=0,0,0,1
@@ -567,9 +575,18 @@ IfMatch4=^(?!On$|Off$|attente$)
 IfMatchAction4=[!SetVariable CFond "120,120,128,170"][!SetVariable CRond "$(n 22)"][!SetVariable ConsCible "On"]
 IfMatchMode=0
 
+[FondVerre]
+Meter=Image
+ImageName=#FondVerre#
+X=0
+Y=0
+W=$(n 300)
+H=$(n 286)
+DynamicVariables=1
+
 [Fond]
 Meter=Shape
-Shape=Rectangle $(f 0.5),$(f 0.5),$(f (300 - 1)),$(f (308 - 1)),$(n 14) | Fill Color 20,18,28,60 | StrokeWidth $(f 1) | Stroke Color 255,255,255,55
+Shape=Rectangle $(f 0.5),$(f 0.5),$(f (300 - 1)),$(f (286 - 1)),$(n 14) | Fill Color 255,255,255,12 | StrokeWidth $(f 1.2) | Stroke Color 255,255,255,110
 
 [Titre]
 Meter=String
@@ -600,12 +617,12 @@ FontSize=$(n 8.3)
 FontColor=#Gris#
 Text=#Source#
 DynamicVariables=1
-$(Ligne 62)$(Rangee 'Sante' 82 'État de la batterie' 'Sante')$(Rangee 'Cycles' 104 'Nombre de cycles' 'Cycles')$(Rangee 'Capacite' 126 'Capacité maximale' 'Capacite')$(Ligne 144)
+$(Ligne 62)$(Rangee 'Sante' 82 'État de la batterie' 'Sante')$(Rangee 'Cycles' 104 'Nombre de cycles' 'Cycles')$(Ligne 122)
 [LibEco]
 Meter=String
 MeterStyle=StyleTexte
 X=$(n 16)
-Y=$(n 162)
+Y=$(n 140)
 FontWeight=600
 Text=Mode économie
 
@@ -613,7 +630,7 @@ Text=Mode économie
 Meter=String
 MeterStyle=StyleTexte
 X=$(n 284)
-Y=$(n 162)
+Y=$(n 140)
 StringAlign=RightCenter
 FontSize=$(n 8.3)
 FontColor=#Gris#
@@ -623,14 +640,14 @@ DynamicVariables=1
 [Piste]
 Meter=Shape
 X=$(n 16)
-Y=$(n 176)
+Y=$(n 154)
 Shape=Rectangle 0,0,$(n 268),$(n 26),$(n 8) | Fill Color 255,255,255,28 | StrokeWidth 0
-$(Segment 'Auto' 0 'Auto' 'auto')$(Segment 'On' 1 'Activé' 'on')$(Segment 'Off' 2 'Désactivé' 'off')$(Ligne 218)
+$(Segment 'Auto' 0 'Auto' 'auto')$(Segment 'On' 1 'Activé' 'on')$(Segment 'Off' 2 'Désactivé' 'off')$(Ligne 196)
 [LibCons]
 Meter=String
 MeterStyle=StyleTexte
 X=$(n 16)
-Y=$(n 236)
+Y=$(n 214)
 FontWeight=600
 Text=Conservation de la batterie
 
@@ -638,26 +655,26 @@ Text=Conservation de la batterie
 Meter=String
 MeterStyle=StyleTexte
 X=$(n 16)
-Y=$(n 254)
+Y=$(n 232)
 FontSize=$(n 7.7)
 FontColor=#Gris#
-Text=Charge limitée à 80 % (réglage HP)
+Text=Charge limitée à 80 %
 
 [Interrupteur]
 Meter=Shape
 X=$(n 240)
-Y=$(n 232)
+Y=$(n 210)
 Shape=Rectangle 0,0,$(n 44),$(n 26),$(n 13) | Fill Color #CFond# | StrokeWidth 0
 Shape2=Ellipse #CRond#,$(n 13),$(n 11) | Fill Color 255,255,255,255 | StrokeWidth 0
 DynamicVariables=1
 LeftMouseUpAction=["wscript.exe" "$lanceur" "$conservation" "#ConsCible#"][!SetVariable Conservation attente][!UpdateMeasure MesureCons][!UpdateMeter *][!Redraw]
 ToolTipText=Windows va demander l'autorisation (Oui/Non)
-$(Ligne 272)
+$(Ligne 250)
 [Reglages]
 Meter=String
 MeterStyle=StyleTexte
 X=$(n 16)
-Y=$(n 290)
+Y=$(n 268)
 Text=Réglages de la batterie…
 LeftMouseUpAction=["ms-settings:batterysaver"][!Hide]
 MouseOverAction=[!SetOption Reglages FontColor "120,180,255,255"][!UpdateMeter Reglages][!Redraw]
@@ -665,5 +682,314 @@ MouseLeaveAction=[!SetOption Reglages FontColor "#Txt#"][!UpdateMeter Reglages][
 "@
 Ecrire (Join-Path $Skins 'PanneauBatterie\PanneauBatterie.ini') $panneau
 }
+
+# ------------------------- Centre de controle facon Mac (clic sur l'icone) -------------------------
+New-Item -ItemType Directory -Force (Join-Path $Skins 'CentreControle') | Out-Null
+$ccW = 320; $ccH = 358
+$ccX = [math]::Max(0, $largeur - [int](n 8) - [int](n $ccW)); $ccY = [int]$hp + [int](n 6)
+$icCC = $largeur - [int](n 168)
+# zone de l'icone + rayon + curseurs luminosite et son (x,y,largeur,hauteur relatifs au panneau), lus par barre_reservee.ps1
+Set-Content (Join-Path $App 'zone_centre.txt') ("{0},{1},0,{2},{3},{4},{5},{6},{7},{8},{9},{10},{11}" -f ($icCC - [int](n 16)), ($icCC + [int](n 16)), $hp, (n 14), (n 24), (n 128), (n 272), (n 22), (n 24), (n 212), (n 232), (n 22))
+$msg = '[!CommandMeasure MesureMoteur "SendMessage 32769 {0} 0"]'
+function Tuile($x, $y, $w, $h) { "Shape=Rectangle $(n $x),$(n $y),$(n $w),$(n $h),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30" }
+function Radio($nom, $x, $icone, $titre, $varFond, $varTexte, $cmd, $liste) {
+@"
+
+[Rond$nom]
+Meter=Shape
+Group=Radios
+Shape=Ellipse $(n ($x + 28)),$(n 48),$(n 16) | Fill Color #$varFond# | StrokeWidth 0
+DynamicVariables=1
+LeftMouseUpAction=$($msg -f $cmd)
+ToolTipText=Activer / désactiver
+
+[Icone$nom]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n ($x + 28))
+Y=$(n 48)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 9.5)
+Text=[\x$icone]
+
+[Zone$nom]
+Meter=Shape
+Shape=Rectangle $(n ($x + 48)),$(n 22),$(n 92),$(n 52) | Fill Color 0,0,0,1 | StrokeWidth 0
+LeftMouseUpAction=["$liste"][!Hide]
+
+[Titre$nom]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n ($x + 52))
+Y=$(n 40)
+FontWeight=600
+Text=$titre
+
+[Etat$nom]
+Meter=String
+MeterStyle=StyleTexte
+Group=Radios
+X=$(n ($x + 52))
+Y=$(n 57)
+W=$(n 88)
+ClipString=1
+FontSize=$(n 7.7)
+FontColor=#Gris#
+Text=#$varTexte#
+DynamicVariables=1
+"@
+}
+function Glissiere($nom, $var, $y, $w, $icone) {
+@"
+
+[Piste$nom]
+Meter=Shape
+Group=$var
+Shape=Rectangle $(n 24),$(n $y),$(n $w),$(n 22),$(n 11) | Fill Color 255,255,255,40 | StrokeWidth 0
+Shape2=Rectangle $(n 24),$(n $y),(Max($(n 22),Max(#$var#,0)*$(f ($w / 100)))),$(n 22),$(n 11) | Fill Color 255,255,255,235 | StrokeWidth 0
+Shape3=Ellipse ($(n 24)+Max($(n 11),Max(#$var#,0)*$(f ($w / 100))-$(n 11))),$(n ($y + 11)),$(n 11) | Fill Color 255,255,255,255 | StrokeWidth $(f 0.8) | Stroke Color 0,0,0,40
+DynamicVariables=1
+
+[Pictogramme$nom]
+Meter=String
+MeterStyle=StyleTexte
+Group=$var
+X=$(n 36)
+Y=$(n ($y + 11))
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 8)
+FontColor=70,70,80,255
+Text=[\x$icone]
+"@
+}
+$cc = @"
+[Rainmeter]
+Update=-1
+AccurateText=1
+OnRefreshAction=[!Move "$ccX" "$ccY"][!ZPos "2"][!Draggable "0"][!KeepOnScreen "0"][!SnapEdges "0"][!Hide]
+
+[Metadata]
+Name=Centre de controle facon Mac
+Information=S'ouvre au clic sur l'icone de la barre. Verre, curseurs, Wi-Fi, Bluetooth et musique : barre_reservee.ps1.
+
+[Variables]
+Police=Segoe UI Variable Text
+Icones=Segoe Fluent Icons
+Txt=255,255,255,255
+Gris=255,255,255,165
+WifiFond=255,255,255,45
+WifiTexte=…
+BtFond=255,255,255,45
+BtTexte=…
+Lum=50
+Son=50
+MusTitre=Aucune lecture
+MusArtiste=
+MusEtat=0
+MusImage=
+FondVerre=
+
+[StyleTexte]
+FontFace=#Police#
+FontSize=$(n 9.3)
+FontColor=#Txt#
+AntiAlias=1
+StringAlign=LeftCenter
+SolidColor=0,0,0,0
+
+[MesureMoteur]
+Measure=Plugin
+Plugin=WindowMessagePlugin
+WindowName=InterfaceMacMoteur
+UpdateDivider=-1
+
+[MesureLum]
+Measure=Calc
+Formula=#Lum#
+DynamicVariables=1
+UpdateDivider=-1
+
+[MesureSon]
+Measure=Calc
+Formula=#Son#
+DynamicVariables=1
+UpdateDivider=-1
+IfCondition=MesureSon < 0
+IfTrueAction=[!HideMeter PictogrammeSon][!ShowMeter Muet]
+IfFalseAction=[!ShowMeter PictogrammeSon][!HideMeter Muet]
+
+[MesureMus]
+Measure=Calc
+Formula=#MusEtat#
+DynamicVariables=1
+UpdateDivider=-1
+IfCondition=MesureMus = 1
+IfTrueAction=[!HideMeter Lecture][!ShowMeter Pause]
+IfFalseAction=[!ShowMeter Lecture][!HideMeter Pause]
+
+[FondVerre]
+Meter=Image
+ImageName=#FondVerre#
+X=0
+Y=0
+W=$(n $ccW)
+H=$(n $ccH)
+DynamicVariables=1
+
+[Fond]
+Meter=Shape
+Shape=Rectangle $(f 0.5),$(f 0.5),$(f ($ccW - 1)),$(f ($ccH - 1)),$(n 14) | Fill Color 255,255,255,12 | StrokeWidth $(f 1.2) | Stroke Color 255,255,255,110
+Shape2=Rectangle $(n 12),$(n 12),$(n 144),$(n 72),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30
+Shape3=Rectangle $(n 164),$(n 12),$(n 144),$(n 72),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30
+Shape4=Rectangle $(n 12),$(n 96),$(n 296),$(n 64),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30
+Shape5=Rectangle $(n 12),$(n 172),$(n 296),$(n 72),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30
+Shape6=Rectangle $(n 12),$(n 256),$(n 296),$(n 72),$(n 12) | Fill Color 255,255,255,24 | StrokeWidth $(f 0.8) | Stroke Color 255,255,255,30
+$(Radio 'Wifi' 12 'E701' 'Wi-Fi' 'WifiFond' 'WifiTexte' 4 'ms-availablenetworks:')$(Radio 'Bt' 164 'E702' 'Bluetooth' 'BtFond' 'BtTexte' 5 'ms-settings:bluetooth')
+[TitreEcran]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 24)
+Y=$(n 113)
+FontWeight=600
+Text=Écran
+$(Glissiere 'Lum' 'Lum' 128 272 'E706')
+[TitreSon]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 24)
+Y=$(n 194)
+FontWeight=600
+Text=Son
+$(Glissiere 'Son' 'Son' 212 232 'E995')
+[Muet]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 36)
+Y=$(n 223)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 8)
+FontColor=70,70,80,255
+Text=[\xE74F]
+Hidden=1
+
+[BoutonMuet]
+Meter=Shape
+Shape=Ellipse $(n 282),$(n 223),$(n 14) | Fill Color 255,255,255,40 | StrokeWidth 0
+LeftMouseUpAction=$($msg -f 6)
+ToolTipText=Couper / remettre le son
+
+[IconeMuet]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 282)
+Y=$(n 223)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 8.5)
+Text=[\xE74F]
+
+[FondPochette]
+Meter=Shape
+Shape=Rectangle $(n 24),$(n 268),$(n 48),$(n 48),$(n 8) | Fill Color 255,255,255,30 | StrokeWidth 0
+
+[NotePochette]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 48)
+Y=$(n 292)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 12)
+FontColor=255,255,255,120
+Text=[\xE8D6]
+
+[Pochette]
+Meter=Image
+Group=Musique
+ImageName=#MusImage#
+X=$(n 24)
+Y=$(n 268)
+W=$(n 48)
+H=$(n 48)
+PreserveAspectRatio=2
+DynamicVariables=1
+
+[MusTitre]
+Meter=String
+MeterStyle=StyleTexte
+Group=Musique
+X=$(n 84)
+Y=$(n 283)
+W=$(n 150)
+ClipString=1
+FontWeight=600
+Text=#MusTitre#
+DynamicVariables=1
+
+[MusArtiste]
+Meter=String
+MeterStyle=StyleTexte
+Group=Musique
+X=$(n 84)
+Y=$(n 302)
+W=$(n 150)
+ClipString=1
+FontSize=$(n 7.7)
+FontColor=#Gris#
+Text=#MusArtiste#
+DynamicVariables=1
+
+[Lecture]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 258)
+Y=$(n 292)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 12)
+Text=[\xF5B0]
+SolidColor=0,0,0,1
+LeftMouseUpAction=$($msg -f 1)
+
+[Pause]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 258)
+Y=$(n 292)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 12)
+Text=[\xF8AE]
+SolidColor=0,0,0,1
+LeftMouseUpAction=$($msg -f 1)
+Hidden=1
+
+[Suivant]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 288)
+Y=$(n 292)
+StringAlign=CenterCenter
+FontFace=#Icones#
+FontSize=$(n 10)
+Text=[\xF8AD]
+SolidColor=0,0,0,1
+LeftMouseUpAction=$($msg -f 2)
+
+[PlusReglages]
+Meter=String
+MeterStyle=StyleTexte
+X=$(n 24)
+Y=$(n 342)
+FontSize=$(n 8.7)
+Text=Plus de réglages…
+LeftMouseUpAction=[!Hide]["wscript.exe" "$lanceur" "$raccourci" "A"]
+MouseOverAction=[!SetOption PlusReglages FontColor "120,180,255,255"][!UpdateMeter PlusReglages][!Redraw]
+MouseLeaveAction=[!SetOption PlusReglages FontColor "#Txt#"][!UpdateMeter PlusReglages][!Redraw]
+"@
+Ecrire (Join-Path $Skins 'CentreControle\CentreControle.ini') $cc
 
 [pscustomobject]@{ Echelle = $S; LargeurPx = $largeur; Batterie = $aBatterie; PastilleX = $px; PastilleY = $py; BarrePx = $hp }

@@ -1,4 +1,4 @@
-# Fonctionnement technique
+﻿# Fonctionnement technique
 
 ## Vue d'ensemble
 
@@ -61,10 +61,10 @@ Réglages Windhawk appliqués : `ModTasksDialogDelay=600000` et `DontAutoShowToo
 
 | Priorité | État | Couleur |
 |---|---|---|
-| 1 | branché et en charge | verte avec éclair |
-| 2 | branché, recharge en pause (limite de charge) | blanche avec éclair |
-| 3 | sur batterie, moins de 20 % | **rouge** (l'alerte passe avant le jaune) |
-| 4 | mode économie actif | **jaune** (icône et pourcentage) |
+| 1 | sur batterie, moins de 20 % | **rouge** (l'alerte passe avant tout) |
+| 2 | mode économie actif, branché ou non | **jaune** (icône et pourcentage ; l'éclair reste si branché) |
+| 3 | branché et en charge | verte avec éclair |
+| 4 | branché, recharge en pause (limite de charge) | blanche avec éclair |
 | 5 | sur batterie, autres cas | blanche |
 
 Juste après le débranchement, la batterie reste blanche pendant les 15 s d'attente, puis devient jaune.
@@ -86,6 +86,20 @@ Skin `MacWidgets\PanneauBatterie`, ouvert par un clic sur l'icône de batterie (
 - **Mode économie** : le choix Auto / Activé / Désactivé est écrit par Rainmeter dans `PanneauBatterie\etat.inc`. Rainmeter n'écrit (`!WriteKeyValue`) que dans ses dossiers de skins. Le moteur lit ce fichier toutes les 3 s. Un choix manuel s'applique sans attendre les 15 s.
 - **Conservation** (`conservation.ps1`, PC HP) : réglage BIOS `Battery Health Manager` (« Maximize my battery health On/Off ») via WMI `root\HP\InstrumentedBIOS` (`HP_BIOSSettingInterface.SetBIOSSetting`). Il faut les droits administrateur : le script se relance avec `-Verb RunAs`, Windows demande Oui/Non à chaque fois, et aucun droit permanent n'est installé. L'état connu est gardé dans `etat.inc`. La désinstallation ne touche pas à ce réglage du BIOS.
 - Fermé, le panneau ne se met pas à jour (`Update=-1`) : il ne coûte presque rien.
+
+## Centre de contrôle
+
+Skin `MacWidgets\CentreControle`, ouvert par l'icône ⚙ de la barre.
+
+- **Ouverture** : la barre envoie un message au moteur (`WindowMessagePlugin` → fenêtre `InterfaceMacMoteur`, `WM_APP+1`, paramètre 10 = batterie, 11 = centre de contrôle). Le moteur ferme l'autre panneau, prépare le verre, puis affiche le panneau.
+- **Wi-Fi / Bluetooth** : API WinRT `Windows.Devices.Radios` (lecture et marche/arrêt, sans droits administrateur). Le nom du réseau vient de `NetworkInformation`.
+- **Curseurs** : le moteur suit la souris (zones lues dans `zone_centre.txt`). Pendant un glissement, le minuteur passe à 30 ms. Luminosité : WMI `WmiSetBrightness`. Son : Core Audio `IAudioEndpointVolume.SetMasterVolumeLevelScalar` / `SetMute`. Panneau ouvert, les touches de volume et de luminosité déplacent ses curseurs au lieu d'afficher les pastilles.
+- **Musique** : API WinRT `GlobalSystemMediaTransportControlsSessionManager` (titre, artiste, pochette, état), relue toutes les 1,2 s seulement quand le panneau est ouvert. Lecture/pause et suivant : touches multimédia simulées.
+- Commandes du panneau → moteur : 1 lecture/pause, 2 suivant, 3 précédent, 4 Wi-Fi, 5 Bluetooth, 6 son coupé/remis.
+
+## Effet verre des panneaux
+
+Windows ne floute pas les fenêtres de Rainmeter, qui ont une transparence pixel par pixel : `SetWindowCompositionAttribute` (flou ou acrylique) donnait un gris uni et peignait les coins. Le verre est donc une image. Juste avant l'ouverture, le moteur photographie ce qu'il y a derrière le panneau (`CopyFromScreen`), le réduit puis l'agrandit (flou), ajoute une teinte légère et arrondit les coins. Il l'enregistre (`verre<horodatage>.png`, nom unique car Rainmeter garde les images en mémoire) et l'affiche en fond (`FondVerre`). Le résultat est proche du dock. Limite : le fond est figé pendant que le panneau est ouvert.
 
 ## Panneaux Windows depuis la barre
 

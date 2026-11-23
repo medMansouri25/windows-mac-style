@@ -57,7 +57,7 @@ if ($ps.PowerLineStatus -eq 'Online') {
 if ($origine -gt 0 -and $plein) {
   $s = [math]::Min(100, [int][math]::Round(100.0 * $plein / $origine))
   $sante = "$s % · " + $(if ($s -ge 80) { 'Normal' } else { 'Révision conseillée' })
-  $capacite = '{0} Wh sur {1} Wh' -f ([math]::Round($plein / 1000, 1)).ToString($fr), ([math]::Round($origine / 1000, 1)).ToString($fr)
+  $capacite = ('{0} Wh ' -f ([math]::Round($plein / 1000, 1)).ToString($fr)) + $(if ($plein -ge $origine) { '(neuve : {0} Wh)' } else { 'sur {0} Wh' }) -f ([math]::Round($origine / 1000, 1)).ToString($fr)
 } else { $sante = '—'; $capacite = $(if ($plein) { '{0} Wh' -f ([math]::Round($plein / 1000, 1)).ToString($fr) } else { '—' }) }
 $ecoActif = if (Test-Path (Join-Path $dossier 'economie_ecran.json')) { 'actif' } else { 'inactif' }
 

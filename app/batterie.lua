@@ -23,7 +23,8 @@ function Update()
   elseif eco == 1 then
     couleur, info, texte = jaune, '#InfoEco#', jaune
   end
-  if eco == 1 and secteur == 1 then texte = jaune end
+  -- mode eco actif meme branche (choix « Active » du panneau) : icone et pourcentage jaunes, eclair garde
+  if eco == 1 and secteur == 1 then couleur, texte = jaune, jaune; if charge == 0 then eBord = jaune end end
   -- rien n'a change depuis la derniere seconde : on ne redessine pas (economise le processeur)
   local cle = couleur .. info .. texte .. eFond .. math.floor(p)
   if cle == derniereCle then return '' end
