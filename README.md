@@ -27,7 +27,7 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 
 ## 📸 Aperçu
 
-![Vue d'ensemble : barre des menus en haut, dock en verre en bas](docs/captures/apercu.jpg)
+![Vue d'ensemble : barre des menus en haut (logo, nom de l'application, batterie, Wi-Fi, Spotlight, centre de contrôle, date), dock en verre en bas](docs/captures/apercu.jpg)
 
 | Pastille de volume | Pastille de luminosité |
 |---|---|
@@ -37,7 +37,7 @@ Transforme Windows 11 pour qu'il ressemble à macOS, **en un double-clic** :
 |---|---|
 | ![Centre de contrôle façon Mac en verre : Wi-Fi, Bluetooth, écran, son, musique](docs/captures/centre_controle.jpg) | ![Panneau batterie en verre : santé, cycles, mode économie, conservation](docs/captures/panneau_batterie.jpg) |
 
-| Spotlight (Alt + Espace) | Calendrier et notifications (clic sur la date) |
+| Spotlight (Alt + Espace ou la loupe) | Calendrier avec numéros de semaine et notifications (clic sur la date) |
 |---|---|
 | ![Spotlight en verre : calcul, applications, fichiers, web](docs/captures/spotlight.jpg) | ![Calendrier en verre sous la date](docs/captures/calendrier.jpg) |
 
