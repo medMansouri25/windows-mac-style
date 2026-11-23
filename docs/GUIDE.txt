@@ -54,7 +54,8 @@ SPOTLIGHT (Alt + Espace, ou la loupe de la barre)
     le résultat d'un calcul), Échap pour fermer.
 
 CALENDRIER ET NOTIFICATIONS (clic sur la date)
-  · Le mois en cours (aujourd'hui en bleu), flèches ‹ › pour changer de mois,
+  · Le mois en cours (aujourd'hui en bleu) avec les numéros de semaine (la
+    semaine en cours à côté du titre), flèches ‹ › pour changer de mois,
     clic sur le titre pour revenir à aujourd'hui.
   · Les dernières notifications : clic = ouvrir l'application ;
     « Tout effacer » ; lien vers le centre de notifications de Windows.

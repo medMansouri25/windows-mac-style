@@ -346,6 +346,8 @@ public class Agenda : FenetreVerre {
     notifs.Sort((a, b) => b.Date.CompareTo(a.Date));
   }
   int Hauteur() { int n = Math.Min(notifs.Count, MaxNotifs); return VerreUI.N(318) + VerreUI.N(44) + (n == 0 ? VerreUI.N(44) : n * VerreUI.N(74)) + (notifs.Count > MaxNotifs ? VerreUI.N(26) : 0) + VerreUI.N(46); }
+  // numero de semaine ISO 8601 (norme francaise) : celui du jeudi de la semaine
+  static int Semaine(DateTime d) { var jeudi = d.Date.AddDays(3 - ((int)d.DayOfWeek + 6) % 7); return (jeudi.DayOfYear - 1) / 7 + 1; }
   string Quand(DateTime d) {
     var m = (DateTime.Now - d).TotalMinutes;
     if (m < 1) return "maintenant"; if (m < 60) return "il y a " + (int)m + " min";
@@ -383,16 +385,28 @@ public class Agenda : FenetreVerre {
     using (var fM = VerreUI.Police(16, true)) using (var ic = VerreUI.Icones(13)) using (var fJ = VerreUI.Police(11.5, true)) using (var fD = VerreUI.Police(13.5, false)) using (var fDg = VerreUI.Police(13.5, true)) {
       string titre = mois.ToString("MMMM yyyy", fr); titre = char.ToUpper(titre[0]) + titre.Substring(1);
       var rt = new System.Drawing.RectangleF(m, VerreUI.N(14), lu - VerreUI.N(70), VerreUI.N(30)); VerreUI.Texte(g, titre, fM, Blanc(255), rt, false); zones.Add(Tuple.Create(rt, "auj"));
+      if (mois.Year == DateTime.Today.Year && mois.Month == DateTime.Today.Month)   // semaine en cours, a cote du titre
+        using (var fS = VerreUI.Police(12.5, false)) {
+          float lt = g.MeasureString(titre, fM).Width;
+          VerreUI.Texte(g, "·  semaine " + Semaine(DateTime.Today), fS, Blanc(185), new System.Drawing.RectangleF(m + lt + VerreUI.N(2), VerreUI.N(15), lu - VerreUI.N(70) - lt, VerreUI.N(30)), false);
+        }
       var rp = new System.Drawing.RectangleF(L - m - VerreUI.N(64), VerreUI.N(14), VerreUI.N(30), VerreUI.N(30)); var rs = new System.Drawing.RectangleF(L - m - VerreUI.N(30), VerreUI.N(14), VerreUI.N(30), VerreUI.N(30));
       VerreUI.Texte(g, "", ic, Blanc(220), rp, false); VerreUI.Texte(g, "", ic, Blanc(220), rs, false); zones.Add(Tuple.Create(rp, "prec")); zones.Add(Tuple.Create(rs, "suiv"));
-      float cw = lu / 7f, y0 = VerreUI.N(52);
+      float ws = VerreUI.N(30), cw = (lu - ws) / 7f, y0 = VerreUI.N(52), x0 = m + ws;   // colonne des numeros de semaine a gauche
       string[] jours = { "L", "M", "M", "J", "V", "S", "D" };
       using (var sf = new System.Drawing.StringFormat { Alignment = System.Drawing.StringAlignment.Center, LineAlignment = System.Drawing.StringAlignment.Center })
+      using (var fW = VerreUI.Police(11, false)) using (var fWg = VerreUI.Police(11, true))
       using (var bg = new System.Drawing.SolidBrush(Blanc(170))) {
-        for (int i = 0; i < 7; i++) g.DrawString(jours[i], fJ, bg, new System.Drawing.RectangleF(m + i * cw, y0, cw, VerreUI.N(24)), sf);
+        for (int i = 0; i < 7; i++) g.DrawString(jours[i], fJ, bg, new System.Drawing.RectangleF(x0 + i * cw, y0, cw, VerreUI.N(24)), sf);
         int decal = ((int)mois.DayOfWeek + 6) % 7; var debut = mois.AddDays(-decal); float ch = VerreUI.N(38);
+        for (int sem = 0; sem < 6; sem++) {
+          var lundi = debut.AddDays(sem * 7); bool cette = DateTime.Today >= lundi && DateTime.Today < lundi.AddDays(7);
+          var rw = new System.Drawing.RectangleF(m, y0 + VerreUI.N(26) + sem * ch, ws, ch);
+          using (var b = new System.Drawing.SolidBrush(cette ? System.Drawing.Color.FromArgb(120, 185, 255) : Blanc(120))) g.DrawString(Semaine(lundi).ToString(), cette ? fWg : fW, b, rw, sf);
+        }
+        using (var p = new System.Drawing.Pen(Blanc(35), 1)) g.DrawLine(p, x0 - VerreUI.N(2), y0 + VerreUI.N(30), x0 - VerreUI.N(2), y0 + VerreUI.N(22) + 6 * ch);
         for (int k = 0; k < 42; k++) {
-          var d = debut.AddDays(k); var r = new System.Drawing.RectangleF(m + (k % 7) * cw, y0 + VerreUI.N(26) + (k / 7) * ch, cw, ch);
+          var d = debut.AddDays(k); var r = new System.Drawing.RectangleF(x0 + (k % 7) * cw, y0 + VerreUI.N(26) + (k / 7) * ch, cw, ch);
           bool auj = d == DateTime.Today, dansMois = d.Month == mois.Month;
           if (auj) using (var b = new System.Drawing.SolidBrush(Bleu)) { float s = VerreUI.N(32); g.FillEllipse(b, r.X + (r.Width - s) / 2, r.Y + (r.Height - s) / 2, s, s); }
           using (var b = new System.Drawing.SolidBrush(auj ? Blanc(255) : dansMois ? Blanc(k % 7 >= 5 ? 215 : 245) : Blanc(105))) g.DrawString(d.Day.ToString(), auj ? fDg : fD, b, r, sf);
