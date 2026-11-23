@@ -960,7 +960,10 @@ function Notifs {
     'musique-force' { Musique $true }
     'apps' { (Get-StartApps | ForEach-Object { "$($_.Name)`t$($_.AppID)" }) -join "`n" }
     'notifs' { Notifs }
-    'notif-effacer' { [Windows.UI.Notifications.Management.UserNotificationListener]::Current.ClearNotifications(); '' }
+    'notif-effacer' {   # ClearNotifications echoue (0x80070490) : on supprime une par une
+      $l = [Windows.UI.Notifications.Management.UserNotificationListener]::Current
+      $liste = Attendre ($l.GetNotificationsAsync([Windows.UI.Notifications.NotificationKinds]::Toast)) ([System.Collections.Generic.IReadOnlyList[Windows.UI.Notifications.UserNotification]])
+      foreach ($n in @($liste)) { try { $l.RemoveNotification($n.Id) } catch { } }; '' }
     default { if ($c -like 'notif-suppr:*') { [Windows.UI.Notifications.Management.UserNotificationListener]::Current.RemoveNotification([uint32]$c.Substring(12)) }; '' }
   }
 }
